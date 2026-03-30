@@ -208,7 +208,7 @@
 <!-- PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <!-- StPageFlip -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/StPageFlip/2.0.7/StPageFlip.browser.js"></script>
+<script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -313,7 +313,7 @@
     container.style.height = H + 'px';
 
     // Init StPageFlip
-    pageFlip = new St.PageFlip(flipEl, {
+    pageFlip = new PageFlip(flipEl, {
       width:       W,
       height:      H,
       size:        'fixed',
