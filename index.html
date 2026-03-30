@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DoMS Publications — NIT Trichy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #1a1a1a; --ink-muted: #6b6b6b; --ink-faint: #b0b0b0;
+      --paper: #f7f4ef; --paper-card: #fdfcfa;
+      --accent: #8b1a1a; --accent-light: #f2e8e8; --border: #e0dbd3;
+      --serif: 'Playfair Display', Georgia, serif;
+      --sans: 'DM Sans', system-ui, sans-serif;
+    }
+    body { font-family: var(--sans); background: var(--paper); color: var(--ink); min-height: 100vh; }
+
+    header { border-bottom: 1px solid var(--border); background: var(--paper-card); padding: 0 2rem; }
+
+    .masthead-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 0; border-bottom: 1px solid var(--border); gap: 1.5rem;
+    }
+    .masthead-logo { display: flex; align-items: center; gap: 1.25rem; }
+    .logo-img { height: 52px; width: auto; object-fit: contain; display: block; }
+    .logo-placeholder {
+      height: 52px; width: 52px; background: var(--accent); border-radius: 4px;
+      display: none; align-items: center; justify-content: center;
+      font-family: var(--serif); font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .logo-divider { width: 1px; height: 40px; background: var(--border); flex-shrink: 0; }
+    .logo-text h1 { font-family: var(--serif); font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+    .logo-text p { font-size: 0.72rem; color: var(--ink-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; }
+
+    .masthead-nav { display: flex; overflow-x: auto; scrollbar-width: none; }
+    .masthead-nav::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      font-size: 0.78rem; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase;
+      padding: 0.9rem 1.2rem; cursor: pointer; border: none; background: none;
+      color: var(--ink-muted); border-bottom: 2px solid transparent;
+      transition: all 0.15s; white-space: nowrap; font-family: var(--sans);
+    }
+    .nav-tab:hover { color: var(--ink); }
+    .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    main { max-width: 1160px; margin: 0 auto; padding: 3rem 2rem; }
+
+    .section-header {
+      display: flex; align-items: baseline; gap: 1rem;
+      margin-bottom: 2rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+    }
+    .section-header h2 { font-family: var(--serif); font-size: 1.5rem; font-weight: 600; }
+    .section-header span { font-size: 0.72rem; color: var(--ink-muted); letter-spacing: 0.07em; text-transform: uppercase; }
+
+    .featured-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.5rem; margin-bottom: 3rem; }
+
+    .card {
+      background: var(--paper-card); border: 1px solid var(--border); border-radius: 4px;
+      overflow: hidden; cursor: pointer; transition: box-shadow 0.2s, transform 0.2s;
+      text-decoration: none; display: block; color: inherit;
+    }
+    .card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.08); transform: translateY(-2px); }
+
+    .card-thumb {
+      width: 100%; aspect-ratio: 3/2;
+      background: var(--accent-light); display: flex; align-items: center;
+      justify-content: center; position: relative; overflow: hidden;
+    }
+    .pub-grid .card-thumb { aspect-ratio: 3/4; }
+
+    .thumb-placeholder { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0.35; }
+    .thumb-placeholder svg { width: 32px; height: 32px; }
+    .thumb-placeholder span { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    .card-badge {
+      position: absolute; top: 10px; left: 10px; color: #fff;
+      font-size: 0.62rem; font-weight: 500; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 3px 8px; border-radius: 2px;
+    }
+    .badge-magazine  { background: #8b1a1a; }
+    .badge-newsletter{ background: #1a4f8b; }
+    .badge-general   { background: #1a6b3c; }
+    .badge-event     { background: #7b4f1a; }
+
+    .card-body { padding: 1.1rem 1.25rem 0.75rem; }
+    .card-issue { font-size: 0.68rem; color: var(--ink-muted); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 0.35rem; }
+    .card-title { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; line-height: 1.35; margin-bottom: 0.45rem; }
+    .card-desc { font-size: 0.8rem; color: var(--ink-muted); line-height: 1.6; }
+
+    .card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.65rem 1.25rem; border-top: 1px solid var(--border);
+      font-size: 0.72rem; color: var(--ink-muted); margin-top: 0.75rem;
+    }
+    .read-link { color: var(--accent); font-weight: 500; }
+
+    .pub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; margin-bottom: 3.5rem; }
+
+    .empty-state { grid-column: 1 / -1; text-align: center; padding: 3.5rem 2rem; color: var(--ink-muted); }
+    .empty-state h3 { font-family: var(--serif); font-size: 1.1rem; margin-bottom: 0.4rem; color: var(--ink); }
+    .empty-state p { font-size: 0.82rem; line-height: 1.6; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .divider { text-align: center; position: relative; margin: 2.5rem 0 2rem; }
+    .divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border); }
+    .divider span { position: relative; background: var(--paper); padding: 0 1rem; font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-faint); }
+
+    footer {
+      border-top: 1px solid var(--border); background: var(--paper-card);
+      padding: 1.75rem 2rem; display: flex; align-items: center;
+      justify-content: center; gap: 1.5rem; flex-wrap: wrap;
+    }
+    .footer-logos { display: flex; align-items: center; gap: 1rem; }
+    .footer-logo-img { height: 34px; width: auto; object-fit: contain; opacity: 0.6; }
+    .footer-text { font-size: 0.72rem; color: var(--ink-muted); line-height: 1.9; text-align: center; }
+    .footer-text strong { color: var(--ink); }
+
+    @media (max-width: 720px) {
+      .featured-grid { grid-template-columns: 1fr; }
+      .nav-tab { padding: 0.9rem 0.85rem; font-size: 0.72rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="masthead-top">
+    <div class="masthead-logo">
+      <img src="logos/nitt-logo.png" alt="NIT Trichy" class="logo-img"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+      <div class="logo-placeholder">N</div>
+
+      <div class="logo-divider"></div>
+
+      <img src="logos/doms-logo.png" alt="DoMS" class="logo-img"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+      <div class="logo-placeholder">D</div>
+
+      <div class="logo-text">
+        <h1>DoMS Publications</h1>
+        <p>Department of Management Studies · NIT Trichy</p>
+      </div>
+    </div>
+  </div>
+
+  <nav class="masthead-nav">
+    <button class="nav-tab active"  onclick="showTab('magazines',this)">Magazines</button>
+    <button class="nav-tab"         onclick="showTab('newsletters',this)">Newsletters</button>
+    <button class="nav-tab"         onclick="showTab('general',this)">General Information</button>
+    <button class="nav-tab"         onclick="showTab('events',this)">Events &amp; Announcements</button>
+    <button class="nav-tab"         onclick="showTab('all',this)">All Publications</button>
+  </nav>
+</header>
+
+<main>
+  <div class="tab-content active" id="tab-magazines">
+    <div class="section-header"><h2>Magazines</h2><span>Quarterly</span></div>
+    <div class="featured-grid" id="featured-magazine-grid"></div>
+    <div class="divider"><span>All issues</span></div>
+    <div class="pub-grid" id="magazine-grid"></div>
+  </div>
+
+  <div class="tab-content" id="tab-newsletters">
+    <div class="section-header"><h2>Newsletters</h2><span>6 issues per year</span></div>
+    <div class="pub-grid" id="newsletter-grid"></div>
+  </div>
+
+  <div class="tab-content" id="tab-general">
+    <div class="section-header"><h2>General Information</h2><span>Circulars, handbooks &amp; reference documents</span></div>
+    <div class="pub-grid" id="general-grid"></div>
+  </div>
+
+  <div class="tab-content" id="tab-events">
+    <div class="section-header"><h2>Events &amp; Announcements</h2><span>Notices, brochures &amp; event materials</span></div>
+    <div class="pub-grid" id="events-grid"></div>
+  </div>
+
+  <div class="tab-content" id="tab-all">
+    <div class="section-header"><h2>All Publications</h2><span id="all-count"></span></div>
+    <div class="pub-grid" id="all-grid"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-logos">
+    <img src="logos/nitt-logo.png" alt="NIT Trichy" class="footer-logo-img" onerror="this.style.display='none'"/>
+    <img src="logos/doms-logo.png" alt="DoMS" class="footer-logo-img" onerror="this.style.display='none'"/>
+  </div>
+  <div class="footer-text">
+    <strong>Department of Management Studies</strong><br>
+    National Institute of Technology, Tiruchirappalli — 620 015 · Tamil Nadu, India
+  </div>
+</footer>
+
+<script>
+  const TYPE_META = {
+    magazine:   { label: 'Magazine',           badge: 'badge-magazine'   },
+    newsletter: { label: 'Newsletter',          badge: 'badge-newsletter' },
+    general:    { label: 'General Information', badge: 'badge-general'    },
+    event:      { label: 'Event / Announcement',badge: 'badge-event'      },
+  };
+
+  let publications = [];
+
+  async function loadPublications() {
+    try { const r = await fetch('publications.json'); publications = await r.json(); }
+    catch(e) { publications = []; }
+    renderAll();
+  }
+
+  function makeCard(pub, isLatest) {
+    const meta = TYPE_META[pub.type] || TYPE_META.general;
+    const a = document.createElement('a');
+    a.className = 'card';
+    a.href = `flipbook.html?file=${encodeURIComponent(pub.file)}&title=${encodeURIComponent(pub.title)}`;
+    a.innerHTML = `
+      <div class="card-thumb">
+        <div class="thumb-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/>
+            <path d="M7 7h10M7 11h10M7 15h6"/>
+          </svg>
+          <span>PDF</span>
+        </div>
+        ${isLatest ? `<span class="card-badge ${meta.badge}">Latest</span>` : ''}
+      </div>
+      <div class="card-body">
+        <div class="card-issue">${meta.label} · ${pub.issue}</div>
+        <div class="card-title">${pub.title}</div>
+        ${pub.desc ? `<div class="card-desc">${pub.desc}</div>` : ''}
+      </div>
+      <div class="card-footer">
+        <span>${pub.date}</span>
+        <span class="read-link">Read ›</span>
+      </div>`;
+    return a;
+  }
+
+  function renderGrid(id, pubs, msg) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+    if (!pubs.length) {
+      el.innerHTML = `<div class="empty-state"><h3>No publications yet</h3><p>${msg}</p></div>`;
+      return;
+    }
+    pubs.forEach((p, i) => el.appendChild(makeCard(p, i === 0)));
+  }
+
+  function renderAll() {
+    const by = t => publications.filter(p => p.type === t);
+    const mag = by('magazine');
+
+    const feat = document.getElementById('featured-magazine-grid');
+    feat.innerHTML = '';
+    feat.style.display = mag.length ? 'grid' : 'none';
+    if (mag[0]) feat.appendChild(makeCard(mag[0], true));
+    if (mag[1]) feat.appendChild(makeCard(mag[1], false));
+
+    renderGrid('magazine-grid',   mag.slice(2),      'Add magazines to pdfs/ and update publications.json.');
+    renderGrid('newsletter-grid', by('newsletter'),  'Add newsletters to pdfs/ and update publications.json.');
+    renderGrid('general-grid',    by('general'),     'Add general information documents here.');
+    renderGrid('events-grid',     by('event'),       'Add event and announcement PDFs here.');
+    renderGrid('all-grid',        publications,      'No publications added yet. See README for instructions.');
+    document.getElementById('all-count').textContent =
+      `${publications.length} publication${publications.length !== 1 ? 's' : ''}`;
+  }
+
+  function showTab(name, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  loadPublications();
+</script>
+</body>
+</html>
