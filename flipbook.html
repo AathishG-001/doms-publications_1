@@ -313,7 +313,7 @@
     container.style.height = H + 'px';
 
     // Init StPageFlip
-    pageFlip = new PageFlip(flipEl, {
+    pageFlip = new St.PageFlip(flipEl, {
       width:       W,
       height:      H,
       size:        'fixed',
@@ -389,6 +389,7 @@
         await loadFlipbook(pdfDoc);
       }
     } catch(e) {
+      console.error("FLIPBOOK ERROR:", e);
       showError(`Could not load "${pdfFile}". Make sure the file exists in the pdfs/ folder in your repository.`);
     }
   }
