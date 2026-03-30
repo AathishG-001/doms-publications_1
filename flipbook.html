@@ -375,7 +375,14 @@
     if (!pdfFile) { showError('No PDF file specified.'); return; }
     try {
       setProgress(5, 'Fetching document…');
-      const pdfDoc = await pdfjsLib.getDocument(pdfFile).promise;
+      // Build absolute URL to avoid CORS issues on GitHub Pages
+      const absoluteUrl = new URL(pdfFile, window.location.href).href;
+      const pdfDoc = await pdfjsLib.getDocument({
+        url: absoluteUrl,
+        withCredentials: false,
+        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+        cMapPacked: true,
+      }).promise;
       if (isMobile) {
         await loadMobile(pdfDoc);
       } else {
