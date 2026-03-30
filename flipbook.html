@@ -393,4 +393,399 @@
   boot();
 </script>
 </body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reader — DoMS Publications</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #8b1a1a;
+      --toolbar-h: 52px;
+      --sans: 'DM Sans', system-ui, sans-serif;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: var(--sans);
+      background: #2a2a2a;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      height: var(--toolbar-h);
+      background: #181818;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      gap: 8px;
+      flex-shrink: 0;
+      border-bottom: 1px solid #2e2e2e;
+      z-index: 10;
+    }
+
+    .tb-back {
+      display: flex; align-items: center; gap: 6px;
+      color: #aaa; font-size: 0.8rem; text-decoration: none;
+      padding: 6px 12px 6px 0; border-right: 1px solid #2e2e2e;
+      margin-right: 8px; white-space: nowrap; transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    .tb-back:hover { color: #fff; }
+
+    .tb-title { color: #ccc; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .tb-sep { width: 1px; height: 22px; background: #2e2e2e; flex-shrink: 0; }
+
+    .tb-btn {
+      background: none; border: none; color: #aaa;
+      width: 34px; height: 34px; border-radius: 4px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s; flex-shrink: 0;
+    }
+    .tb-btn:hover:not(:disabled) { background: #2e2e2e; color: #fff; }
+    .tb-btn:disabled { opacity: 0.3; cursor: default; }
+
+    .tb-page {
+      font-size: 0.75rem; color: #888; min-width: 72px;
+      text-align: center; font-variant-numeric: tabular-nums; flex-shrink: 0;
+    }
+
+    .tb-download {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--accent); color: #fff; border: none; border-radius: 4px;
+      padding: 6px 12px; font-size: 0.75rem; font-family: var(--sans);
+      cursor: pointer; transition: opacity 0.15s; flex-shrink: 0;
+      text-decoration: none; white-space: nowrap; margin-left: 4px;
+    }
+    .tb-download:hover { opacity: 0.85; }
+
+    /* ── BOOK STAGE ── */
+    .stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #flipbook-container {
+      position: relative;
+      display: none; /* shown after render */
+    }
+
+    /* StPageFlip injects .stf__wrapper here */
+    .stf__wrapper { border-radius: 2px; }
+
+    /* ── LOADING SCREEN ── */
+    .loading {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1.25rem;
+      background: #2a2a2a; z-index: 20;
+    }
+    .loading.hidden { display: none; }
+
+    .load-title { color: #ccc; font-size: 0.9rem; font-weight: 400; }
+
+    .progress-track {
+      width: 260px; height: 3px;
+      background: #3a3a3a; border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%; background: var(--accent);
+      border-radius: 2px; width: 0%;
+      transition: width 0.2s ease;
+    }
+    .load-status { font-size: 0.75rem; color: #666; }
+
+    /* ── ERROR ── */
+    .error {
+      display: none; position: absolute; inset: 0;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem; text-align: center; padding: 2rem; background: #2a2a2a; z-index: 20;
+    }
+    .error.show { display: flex; }
+    .error h2 { color: #ddd; font-size: 1rem; font-weight: 500; }
+    .error p { color: #777; font-size: 0.82rem; max-width: 340px; line-height: 1.6; }
+    .error a { color: #c06060; font-size: 0.82rem; }
+
+    /* ── MOBILE: single page scroll fallback ── */
+    .mobile-reader {
+      display: none;
+      flex: 1; overflow-y: auto;
+      flex-direction: column; align-items: center;
+      gap: 8px; padding: 1rem;
+    }
+    .mobile-reader canvas { max-width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+
+    @media (max-width: 600px) {
+      .stage { display: none; }
+      .mobile-reader { display: flex; }
+      .tb-sep, .tb-page { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a class="tb-back" href="index.html">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    All Publications
+  </a>
+  <span class="tb-title" id="doc-title">Loading…</span>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-first" title="First page" disabled onclick="goFirst()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
+    </svg>
+  </button>
+  <button class="tb-btn" id="btn-prev" title="Previous page" disabled onclick="goPrev()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
+  <span class="tb-page" id="page-indicator">— / —</span>
+  <button class="tb-btn" id="btn-next" title="Next page" disabled onclick="goNext()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </button>
+  <button class="tb-btn" id="btn-last" title="Last page" disabled onclick="goLast()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
+    </svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <a class="tb-download" id="dl-btn" href="#" download>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Download PDF
+  </a>
+</div>
+
+<div class="stage">
+  <div class="loading" id="loading">
+    <span class="load-title" id="load-title">Preparing document…</span>
+    <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+    <span class="load-status" id="load-status">Starting…</span>
+  </div>
+
+  <div class="error" id="error">
+    <h2>Could not load document</h2>
+    <p id="error-msg">The PDF could not be found. Check that the file is in the pdfs/ folder and the filename in publications.json is correct.</p>
+    <a href="index.html">← Back to publications</a>
+  </div>
+
+  <div id="flipbook-container">
+    <div id="flipbook"></div>
+  </div>
+</div>
+
+<!-- Mobile fallback -->
+<div class="mobile-reader" id="mobile-reader"></div>
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- StPageFlip -->
+<script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const params   = new URLSearchParams(window.location.search);
+  const pdfFile  = params.get('file')  || '';
+  const pdfTitle = params.get('title') || 'Document';
+  const isMobile = window.innerWidth <= 600;
+
+  document.title = pdfTitle + ' — DoMS Publications';
+  document.getElementById('doc-title').textContent = pdfTitle;
+  document.getElementById('load-title').textContent = pdfTitle;
+  document.getElementById('dl-btn').href     = pdfFile;
+  document.getElementById('dl-btn').download = pdfFile.split('/').pop();
+
+  let pageFlip = null;
+  let totalPages = 0;
+
+  // ── Progress helpers ──
+  function setProgress(pct, msg) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('load-status').textContent  = msg;
+  }
+
+  function showError(msg) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('error-msg').textContent = msg;
+    document.getElementById('error').classList.add('show');
+  }
+
+  // ── Render a single page to a canvas at given scale ──
+  async function renderPage(pdfDoc, pageNum, scale) {
+    const page     = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale });
+    const canvas   = document.createElement('canvas');
+    canvas.width   = viewport.width;
+    canvas.height  = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    return canvas;
+  }
+
+  // ── Calculate best scale to fit screen ──
+  function calcScale(viewport) {
+    const stageH = window.innerHeight - 52 - 40; // toolbar + padding
+    const stageW = window.innerWidth  - 40;
+    // Two pages side by side
+    const scaleH = stageH / viewport.height;
+    const scaleW = (stageW / 2) / viewport.width;
+    return Math.min(scaleH, scaleW, 1.5);
+  }
+
+  // ── MOBILE: simple scroll reader ──
+  async function loadMobile(pdfDoc) {
+    const container = document.getElementById('mobile-reader');
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      setProgress(Math.round((i / pdfDoc.numPages) * 100), `Page ${i} of ${pdfDoc.numPages}`);
+      const canvas = await renderPage(pdfDoc, i, 1.2);
+      container.appendChild(canvas);
+    }
+    document.getElementById('loading').classList.add('hidden');
+  }
+
+  // ── DESKTOP: flipbook ──
+  async function loadFlipbook(pdfDoc) {
+    totalPages = pdfDoc.numPages;
+    console.log('loadFlipbook: pages =', totalPages);
+
+    const firstPage    = await pdfDoc.getPage(1);
+    const baseViewport = firstPage.getViewport({ scale: 1 });
+    const scale        = calcScale(baseViewport);
+    const viewport     = firstPage.getViewport({ scale });
+    const W = Math.floor(viewport.width);
+    const H = Math.floor(viewport.height);
+    console.log('Page dimensions:', W, 'x', H, 'scale:', scale);
+
+    // Render all pages to data URLs
+    const dataUrls = [];
+    for (let i = 1; i <= totalPages; i++) {
+      setProgress(Math.round((i / totalPages) * 88), `Rendering page ${i} of ${totalPages}…`);
+      const c = await renderPage(pdfDoc, i, scale);
+      dataUrls.push(c.toDataURL('image/jpeg', 0.88));
+    }
+
+    setProgress(92, 'Building flipbook…');
+
+    // Build page divs — StPageFlip HTML mode requires .page wrapper divs
+    const container = document.getElementById('flipbook-container');
+    const flipEl    = document.getElementById('flipbook');
+    flipEl.innerHTML = '';
+    flipEl.style.cssText = `width:${W * 2}px;height:${H}px;`;
+
+    dataUrls.forEach(url => {
+      const div = document.createElement('div');
+      div.className = 'page';
+      div.style.cssText = `width:${W}px;height:${H}px;overflow:hidden;background:#fff;`;
+      const img = document.createElement('img');
+      img.src = url;
+      img.style.cssText = `width:100%;height:100%;display:block;`;
+      div.appendChild(img);
+      flipEl.appendChild(div);
+    });
+
+    container.style.cssText = `width:${W * 2}px;height:${H}px;`;
+
+    setProgress(96, 'Initialising page flip…');
+    console.log('St:', typeof St, '| St.PageFlip:', typeof St?.PageFlip);
+
+    pageFlip = new St.PageFlip(container, {
+      width:       W,
+      height:      H,
+      size:        'fixed',
+      showCover:   true,
+      mobileScrollSupport: false,
+      usePortrait: false,
+      flippingTime: 700,
+      maxShadowOpacity: 0.5,
+    });
+
+    pageFlip.loadFromHTML(flipEl.querySelectorAll('.page'));
+    pageFlip.on('flip', e => updateControls(e.data + 1));
+
+    setProgress(100, 'Ready');
+    document.getElementById('loading').classList.add('hidden');
+    container.style.display = 'block';
+    enableControls();
+    updateControls(1);
+    console.log('Flipbook ready!');
+  }
+
+  function enableControls() {
+    ['btn-first','btn-prev','btn-next','btn-last'].forEach(id => {
+      document.getElementById(id).disabled = false;
+    });
+  }
+
+  function updateControls(page) {
+    const spread = Math.ceil(page / 2);
+    const total  = Math.ceil(totalPages / 2);
+    document.getElementById('page-indicator').textContent = `${page} / ${totalPages}`;
+    document.getElementById('btn-first').disabled = page <= 1;
+    document.getElementById('btn-prev').disabled  = page <= 1;
+    document.getElementById('btn-next').disabled  = page >= totalPages;
+    document.getElementById('btn-last').disabled  = page >= totalPages;
+  }
+
+  function goFirst() { pageFlip && pageFlip.flip(0); }
+  function goLast()  { pageFlip && pageFlip.flip(totalPages - 1); }
+  function goPrev()  { pageFlip && pageFlip.flipPrev(); }
+  function goNext()  { pageFlip && pageFlip.flipNext(); }
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goNext();
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goPrev();
+  });
+
+  // ── Boot ──
+  async function boot() {
+    if (!pdfFile) { showError('No PDF file specified.'); return; }
+    try {
+      setProgress(5, 'Fetching document…');
+      // Build absolute URL to avoid CORS issues on GitHub Pages
+      const absoluteUrl = new URL(pdfFile, window.location.href).href;
+      const pdfDoc = await pdfjsLib.getDocument({
+        url: absoluteUrl,
+        withCredentials: false,
+        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+        cMapPacked: true,
+      }).promise;
+      if (isMobile) {
+        await loadMobile(pdfDoc);
+      } else {
+        await loadFlipbook(pdfDoc);
+      }
+    } catch(e) {
+      console.error("FLIPBOOK ERROR:", e);
+      showError(`Could not load "${pdfFile}". Make sure the file exists in the pdfs/ folder in your repository.`);
+    }
+  }
+
+  boot();
+</script>
+</body>
 </html>
