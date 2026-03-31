@@ -208,50 +208,56 @@
     .pdf-view.active { display: flex; }
     .pdf-page-wrap {
       position: relative; flex-shrink: 0;
-      /* FIX: ensure page never overflows mobile screen */
-      max-width: 100%;
+      overflow: hidden;
+      /* Size is set inline by JS to match viewport CSS dimensions */
     }
     .pdf-page-wrap canvas {
       display: block;
       box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-      /* FIX: scale canvas down to fit container width on mobile */
-      max-width: 100%;
-      height: auto;
+      /* Fill the wrap exactly — wrap is sized to viewport CSS px, canvas may have more
+         device pixels but must occupy the same CSS area so textLayer aligns perfectly */
+      width: 100%;
+      height: 100%;
     }
 
-    /* ── PDF.js text layer (for highlight + links) ── */
+    /* ── PDF.js text layer (for highlight + text selection only) ── */
     .textLayer {
       position: absolute; inset: 0; overflow: hidden;
-      line-height: 1; pointer-events: none;
+      line-height: 1;
+      /* text layer sits BELOW link overlays — pointer-events only on highlight spans */
+      pointer-events: none;
+      z-index: 1;
     }
     .textLayer > span {
       color: transparent; position: absolute; white-space: pre;
       cursor: text; transform-origin: 0% 0%;
-      pointer-events: auto;
+      /* spans are NOT pointer-events:auto — links sit above and must receive clicks */
+      pointer-events: none;
     }
     .textLayer .highlight {
-      background: rgba(255, 200, 0, 0.55) !important;
+      /* darker amber — clearly visible on white PDF pages */
+      background: rgba(195, 120, 0, 0.82) !important;
       border-radius: 2px;
-      pointer-events: none;
+      outline: 1px solid rgba(160, 90, 0, 0.6);
     }
     .textLayer .selected { background: rgba(0, 100, 255, 0.3) !important; }
 
-    /* ── Link overlays ── */
+    /* ── Link overlays — rendered ABOVE text layer so clicks land here ── */
     .link-overlay {
-      position: absolute; cursor: pointer; z-index: 10;
-      border: 1px solid rgba(100,160,255,0.35);
-      background: rgba(100,160,255,0.08);
-      border-radius: 2px; transition: background 0.1s;
-      /* FIX: allow pointer events through text layer */
+      position: absolute; cursor: pointer;
+      z-index: 5;   /* above textLayer(z=1), below nothing */
+      border: 1px solid rgba(100,160,255,0.40);
+      background: rgba(100,160,255,0.10);
+      border-radius: 2px; transition: background 0.15s;
       pointer-events: auto;
     }
-    .link-overlay:hover { background: rgba(100,160,255,0.25); }
+    .link-overlay:hover { background: rgba(100,160,255,0.28); }
 
     /* ── Flipbook page highlight box ── */
     .hl-box {
-      position: absolute; background: rgba(255,210,0,0.52);
+      position: absolute; background: rgba(195,120,0,0.82);
       pointer-events: none; border-radius: 2px; z-index: 5;
-      box-shadow: 0 0 0 1px rgba(200,160,0,0.5);
+      box-shadow: 0 0 0 1px rgba(140,80,0,0.75);
       animation: hl-fade 5s forwards;
     }
     @keyframes hl-fade { 0%,80%{opacity:1} 100%{opacity:0} }
@@ -682,13 +688,17 @@
           wrap.dataset.pageNum = i;
 
           const { canvas, page, viewport } = await renderToCanvas(pdfDocRef, i, renderScale);
+
+          // The wrap must be sized to the viewport CSS dimensions so that absolutely-
+          // positioned children (textLayer, link-overlay) sit exactly over the canvas.
+          // canvas.width/height are in device pixels; viewport.width/height are in CSS px.
+          wrap.style.width  = viewport.width  + 'px';
+          wrap.style.height = viewport.height + 'px';
           wrap.appendChild(canvas);
 
-          // Build text layer for highlight + text selection
+          // Text layer first, then link overlays on top (DOM order = z-order)
           const textLayer = await buildTextLayer(page, viewport, wrap, canvas);
-
-          // Build link overlays
-          await buildLinkOverlays(page, viewport, wrap, canvas.width, canvas.height);
+          await buildLinkOverlays(page, viewport, wrap);
 
           pdfViewEl.appendChild(wrap);
           pdfPageWraps[i] = { wrap, canvas, textLayer };
@@ -719,18 +729,23 @@
   }
 
   // ── BUILD TEXT LAYER (for PDF view) ──
-  // FIX: use PDF.js renderTextLayer for accurate glyph positioning,
-  // which correctly handles the PDF bottom-left origin and font metrics.
+  // PDF.js renderTextLayer positions spans in viewport CSS units (NOT canvas pixels).
+  // The textLayer div must therefore be the same size as the viewport, not the canvas.
+  // We then CSS-scale the whole .pdf-page-wrap so it fits the screen — both the canvas
+  // (via max-width:100%/height:auto) and the absolutely-positioned textLayer scale together.
   async function buildTextLayer(page, viewport, container, canvas) {
     const content = await page.getTextContent();
 
     const tl = document.createElement('div');
     tl.className = 'textLayer';
-    // Match the canvas pixel dimensions exactly
-    tl.style.cssText = `width:${canvas.width}px;height:${canvas.height}px;`;
+    // Size MUST match viewport dimensions (CSS units), not canvas pixel dimensions.
+    // canvas.width = viewport.width * devicePixelRatio-ish, but viewport.width is the CSS size.
+    tl.style.width  = viewport.width  + 'px';
+    tl.style.height = viewport.height + 'px';
+    // Scale the text layer to overlay the canvas (which may be larger due to RENDER_SCALE)
+    // canvas is rendered at renderScale; viewport is at renderScale too, so they match 1:1 in CSS.
     container.appendChild(tl);
 
-    // Use PDF.js built-in renderTextLayer for correct positioning
     await pdfjsLib.renderTextLayer({
       textContentSource: content,
       container: tl,
@@ -742,50 +757,45 @@
   }
 
   // ── BUILD LINK OVERLAYS (for PDF view) ──
-  // FIX: PDF.js stores the resolved URL in ann.url directly after getAnnotations().
-  // Internal dest links are handled separately so they navigate within the viewer.
-  async function buildLinkOverlays(page, viewport, container, canvasW, canvasH) {
+  // Coordinates must be in the same CSS-unit space as the textLayer (= viewport units).
+  // DO NOT multiply by canvas pixel ratios here — the viewport IS the CSS layout size.
+  // Overlays are appended after buildTextLayer so they sit above spans in DOM/z order.
+  async function buildLinkOverlays(page, viewport, container) {
     try {
       const annotations = await page.getAnnotations();
-      const rx = canvasW / viewport.width;
-      const ry = canvasH / viewport.height;
 
       annotations.forEach(ann => {
         if (ann.subtype !== 'Link') return;
 
-        // PDF.js resolves external URLs into ann.url
-        // Internal named destinations are in ann.dest (array) or ann.action
         const hasUrl  = ann.url && ann.url.trim() !== '';
         const hasDest = ann.dest != null || (ann.action && ann.action.dest != null);
         if (!hasUrl && !hasDest) return;
 
-        // PDF coordinate system: origin at bottom-left
-        const [x1, y1, x2, y2] = ann.rect;
-        const cssX = x1 * rx;
-        // y2 is the top of the rect in PDF coords (larger y = higher on page)
-        const cssY = (viewport.height - y2) * ry;
-        const cssW = (x2 - x1) * rx;
-        const cssH = (y2 - y1) * ry;
+        // PDF rect is in user-space; viewport.convertToViewportRectangle maps it
+        // to the same coordinate system that renderTextLayer uses — i.e. CSS px units.
+        const [x1, y1, x2, y2] = viewport.convertToViewportRectangle(ann.rect);
+        // After conversion x1<x2 and y1<y2 are guaranteed? Not always — normalise:
+        const left   = Math.min(x1, x2);
+        const top    = Math.min(y1, y2);
+        const width  = Math.abs(x2 - x1);
+        const height = Math.abs(y2 - y1);
 
         const a = document.createElement('a');
         a.className = 'link-overlay';
-        a.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${cssW.toFixed(1)}px;height:${cssH.toFixed(1)}px;`;
+        a.style.cssText = `left:${left.toFixed(1)}px;top:${top.toFixed(1)}px;width:${width.toFixed(1)}px;height:${height.toFixed(1)}px;`;
 
         if (hasUrl) {
-          // External hyperlink — open in new tab
           a.href   = ann.url;
           a.target = '_blank';
           a.rel    = 'noopener noreferrer';
           a.title  = ann.url;
         } else {
-          // Internal destination — resolve page number and navigate
           a.href = '#';
           const dest = ann.dest || (ann.action && ann.action.dest);
           a.addEventListener('click', async e => {
             e.preventDefault();
             try {
               let destArray = dest;
-              // Named destination: resolve to array
               if (typeof dest === 'string') {
                 destArray = await pdfDocRef.getDestination(dest);
               }
@@ -798,6 +808,7 @@
           });
         }
 
+        // Append AFTER text layer so z-index stacking and DOM order both favour links
         container.appendChild(a);
       });
     } catch(e) { console.warn('Link overlay error:', e); }
