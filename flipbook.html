@@ -20,82 +20,54 @@
     /* ── TOOLBAR ── */
     .toolbar {
       height: var(--toolbar-h); background: #181818;
-      display: flex; align-items: center; padding: 0 1rem;
-      gap: 6px; flex-shrink: 0; border-bottom: 1px solid #2e2e2e; z-index: 100;
+      display: flex; align-items: center; padding: 0 0.75rem;
+      gap: 4px; flex-shrink: 0; border-bottom: 1px solid #2e2e2e; z-index: 100;
     }
     .tb-back {
-      display: flex; align-items: center; gap: 6px; color: #aaa; font-size: 0.8rem;
-      text-decoration: none; padding: 6px 12px 6px 0; border-right: 1px solid #2e2e2e;
-      margin-right: 6px; white-space: nowrap; transition: color 0.15s; flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px; color: #aaa; font-size: 0.78rem;
+      text-decoration: none; padding: 6px 10px 6px 0; border-right: 1px solid #2e2e2e;
+      margin-right: 4px; white-space: nowrap; transition: color 0.15s; flex-shrink: 0;
     }
     .tb-back:hover { color: #fff; }
-    .tb-title { color: #ccc; font-size: 0.85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tb-title { color: #ccc; font-size: 0.82rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tb-sep { width: 1px; height: 22px; background: #2e2e2e; flex-shrink: 0; margin: 0 2px; }
     .tb-btn {
-      background: none; border: none; color: #aaa; width: 34px; height: 34px;
+      background: none; border: none; color: #aaa; width: 32px; height: 32px;
       border-radius: 4px; cursor: pointer; display: flex; align-items: center;
       justify-content: center; transition: background 0.15s, color 0.15s; flex-shrink: 0;
     }
     .tb-btn:hover:not(:disabled) { background: #2e2e2e; color: #fff; }
     .tb-btn:disabled { opacity: 0.3; cursor: default; }
     .tb-btn.active { background: #333; color: #fff; }
-    .tb-page { font-size: 0.75rem; color: #888; min-width: 68px; text-align: center; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .tb-page { font-size: 0.73rem; color: #888; min-width: 60px; text-align: center; font-variant-numeric: tabular-nums; flex-shrink: 0; }
     .tb-download {
-      display: flex; align-items: center; gap: 5px; background: var(--accent);
-      color: #fff; border: none; border-radius: 4px; padding: 6px 12px;
-      font-size: 0.75rem; font-family: var(--sans); cursor: pointer;
+      display: flex; align-items: center; gap: 4px; background: var(--accent);
+      color: #fff; border: none; border-radius: 4px; padding: 5px 10px;
+      font-size: 0.72rem; font-family: var(--sans); cursor: pointer;
       transition: opacity 0.15s; flex-shrink: 0; text-decoration: none; white-space: nowrap;
     }
     .tb-download:hover { opacity: 0.85; }
+    .tb-view-toggle {
+      background: #2e2e2e; border: 1px solid #3a3a3a; color: #ccc;
+      border-radius: 4px; cursor: pointer; display: flex; align-items: center;
+      gap: 4px; padding: 0 8px; height: 28px; font-size: 0.7rem;
+      font-family: var(--sans); white-space: nowrap; transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .tb-view-toggle:hover:not(:disabled) { background: #3a3a3a; color: #fff; }
+    .tb-view-toggle:disabled { opacity: 0.3; cursor: default; }
 
-    /* ── MAIN BODY: search sidebar + stage ── */
-    .body-wrap { flex: 1; display: flex; overflow: hidden; }
-
-    /* ── SEARCH SIDEBAR ── */
-    .search-sidebar {
-      width: 0; flex-shrink: 0; background: #1a1a1a;
-      border-right: 1px solid #2e2e2e; overflow: hidden;
-      transition: width 0.2s ease; display: flex; flex-direction: column;
+    /* Hide some controls on mobile */
+    @media (max-width: 600px) {
+      .tb-title, .tb-sep, .tb-page { display: none; }
+      .tb-view-toggle span { display: none; }
     }
-    .search-sidebar.open { width: var(--search-w); }
-    .search-inner { width: var(--search-w); padding: 12px; display: flex; flex-direction: column; gap: 10px; height: 100%; }
-    .search-header { display: flex; align-items: center; justify-content: space-between; }
-    .search-header span { font-size: 0.78rem; color: #888; letter-spacing: 0.06em; text-transform: uppercase; }
-    .search-close { background: none; border: none; color: #666; cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 3px; }
-    .search-close:hover { background: #333; color: #ccc; }
-    .search-row { display: flex; gap: 6px; }
-    .search-input {
-      flex: 1; background: #2a2a2a; border: 1px solid #3a3a3a; color: #ddd;
-      border-radius: 4px; padding: 7px 10px; font-size: 0.82rem;
-      font-family: var(--sans); outline: none; min-width: 0;
-    }
-    .search-input:focus { border-color: #555; }
-    .search-go {
-      background: var(--accent); border: none; color: #fff; border-radius: 4px;
-      padding: 7px 12px; font-size: 0.78rem; font-family: var(--sans); cursor: pointer;
-    }
-    .search-go:hover { background: var(--accent2); }
-    .search-status { font-size: 0.72rem; color: #666; }
-    .search-results { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-    .sr-item {
-      display: flex; align-items: flex-start; gap: 8px; padding: 8px;
-      background: #222; border-radius: 4px; cursor: pointer;
-      transition: background 0.1s; border: 1px solid transparent;
-    }
-    .sr-item:hover { background: #2e2e2e; border-color: #3a3a3a; }
-    .sr-item.active-result { border-color: var(--accent); }
-    .sr-thumb { width: 34px; height: 46px; object-fit: cover; border-radius: 2px; background: #333; flex-shrink: 0; }
-    .sr-info { flex: 1; min-width: 0; }
-    .sr-page { font-size: 0.7rem; color: #777; margin-bottom: 2px; }
-    .sr-match { font-size: 0.75rem; color: #bbb; line-height: 1.5; word-break: break-word; }
-    .sr-match mark { background: rgba(180,30,30,0.5); color: #ff9999; border-radius: 2px; padding: 0 1px; }
 
     /* ── ZOOM POPUP ── */
     .zoom-popup {
-      display: none; position: absolute; top: calc(var(--toolbar-h) + 4px);
+      display: none; position: absolute; top: calc(var(--toolbar-h) + 4px); right: 170px;
       background: #222; border: 1px solid #3a3a3a; border-radius: 6px;
       padding: 10px 14px; z-index: 200; gap: 10px; align-items: center; white-space: nowrap;
-      right: 160px;
     }
     .zoom-popup.open { display: flex; }
     .zoom-popup button {
@@ -106,13 +78,13 @@
     .zoom-popup button:hover { background: #444; color: #fff; }
     .zoom-label { font-size: 0.78rem; color: #aaa; min-width: 42px; text-align: center; }
 
-    /* ── TILE VIEW OVERLAY ── */
+    /* ── TILE OVERLAY ── */
     .tile-overlay {
       display: none; position: fixed; inset: var(--toolbar-h) 0 0 0;
       background: #1e1e1e; z-index: 150; overflow-y: auto; padding: 1.5rem;
     }
     .tile-overlay.open { display: block; }
-    .tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; max-width: 1200px; margin: 0 auto; }
+    .tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-width: 1200px; margin: 0 auto; }
     .tile-item {
       cursor: pointer; border-radius: 4px; overflow: hidden;
       border: 2px solid transparent; transition: border-color 0.15s, transform 0.15s; background: #2a2a2a;
@@ -120,23 +92,69 @@
     .tile-item:hover { border-color: #555; transform: translateY(-2px); }
     .tile-item.current { border-color: var(--accent); }
     .tile-item img { width: 100%; display: block; }
-    .tile-page-num { text-align: center; font-size: 0.68rem; color: #888; padding: 4px 0; background: #222; }
+    .tile-page-num { text-align: center; font-size: 0.65rem; color: #888; padding: 4px 0; background: #222; }
 
-    /* ── BOOK STAGE ── */
+    /* ── BODY WRAP ── */
+    .body-wrap { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── SEARCH SIDEBAR ── */
+    .search-sidebar {
+      width: 0; flex-shrink: 0; background: #1a1a1a;
+      border-right: 1px solid #2e2e2e; overflow: hidden;
+      transition: width 0.2s ease; display: flex; flex-direction: column;
+    }
+    .search-sidebar.open { width: var(--search-w); }
+    .search-inner { width: var(--search-w); padding: 12px; display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; }
+    .search-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .search-header span { font-size: 0.75rem; color: #777; letter-spacing: 0.08em; text-transform: uppercase; }
+    .search-close { background: none; border: none; color: #555; cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 3px; }
+    .search-close:hover { background: #333; color: #ccc; }
+    .search-row { display: flex; gap: 6px; flex-shrink: 0; }
+    .search-input {
+      flex: 1; background: #2a2a2a; border: 1px solid #3a3a3a; color: #ddd;
+      border-radius: 4px; padding: 7px 10px; font-size: 0.8rem;
+      font-family: var(--sans); outline: none; min-width: 0;
+    }
+    .search-input:focus { border-color: #555; }
+    .search-go {
+      background: var(--accent); border: none; color: #fff; border-radius: 4px;
+      padding: 7px 12px; font-size: 0.76rem; font-family: var(--sans); cursor: pointer; flex-shrink: 0;
+    }
+    .search-go:hover { background: var(--accent2); }
+    .search-status { font-size: 0.7rem; color: #666; flex-shrink: 0; min-height: 16px; }
+    .search-results { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+    .sr-item {
+      display: flex; align-items: flex-start; gap: 8px; padding: 8px;
+      background: #222; border-radius: 4px; cursor: pointer;
+      transition: background 0.1s; border: 1px solid transparent; flex-shrink: 0;
+    }
+    .sr-item:hover { background: #2e2e2e; border-color: #3a3a3a; }
+    .sr-item.active-result { border-color: var(--accent); }
+    .sr-thumb { width: 32px; height: 44px; object-fit: cover; border-radius: 2px; background: #333; flex-shrink: 0; }
+    .sr-info { flex: 1; min-width: 0; }
+    .sr-page { font-size: 0.68rem; color: #666; margin-bottom: 3px; }
+    .sr-match { font-size: 0.73rem; color: #bbb; line-height: 1.5; word-break: break-word; }
+    .sr-match mark { background: rgba(160,20,20,0.5); color: #ff9999; border-radius: 2px; padding: 0 2px; font-style: normal; }
+
+    /* ── STAGE ── */
     .stage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
     #flipbook-container { position: relative; display: none; transform-origin: center center; }
     .stf__wrapper { border-radius: 2px; }
 
+    /* ── PDF SCROLL VIEW ── */
+    .pdf-view { display: none; flex: 1; overflow-y: auto; flex-direction: column; align-items: center; gap: 16px; padding: 1.5rem 1rem; background: #2a2a2a; }
+    .pdf-view.active { display: flex; }
+    .pdf-page-wrap { position: relative; flex-shrink: 0; }
+    .pdf-page-wrap canvas { display: block; box-shadow: 0 4px 24px rgba(0,0,0,0.5); max-width: 900px; width: 100%; }
+    .pdf-page-wrap .hl-box { position: absolute; background: rgba(255,200,0,0.55); pointer-events: none; border-radius: 2px; z-index: 5; box-shadow: 0 0 0 1px rgba(200,150,0,0.4); animation: hl-fade 5s forwards; }
+
     /* ── LOADING ── */
-    .loading {
-      position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 1.25rem; background: #2a2a2a; z-index: 20;
-    }
+    .loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.25rem; background: #2a2a2a; z-index: 20; }
     .loading.hidden { display: none; }
-    .load-title { color: #ccc; font-size: 0.9rem; }
-    .progress-track { width: 260px; height: 3px; background: #3a3a3a; border-radius: 2px; overflow: hidden; }
+    .load-title { color: #ccc; font-size: 0.88rem; }
+    .progress-track { width: 240px; height: 3px; background: #3a3a3a; border-radius: 2px; overflow: hidden; }
     .progress-bar { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.2s ease; }
-    .load-status { font-size: 0.75rem; color: #666; }
+    .load-status { font-size: 0.72rem; color: #666; }
 
     /* ── ERROR ── */
     .error { display: none; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; text-align: center; padding: 2rem; background: #2a2a2a; z-index: 20; }
@@ -145,7 +163,7 @@
     .error p { color: #777; font-size: 0.82rem; max-width: 340px; line-height: 1.6; }
     .error a { color: #c06060; font-size: 0.82rem; }
 
-    /* ── HIGHLIGHT OVERLAY on page divs ── */
+    /* ── HIGHLIGHT on flipbook pages ── */
     .hl-box {
       position: absolute; background: rgba(255,200,0,0.55);
       pointer-events: none; border-radius: 2px; z-index: 5;
@@ -154,91 +172,61 @@
     }
     @keyframes hl-fade { 0%,80%{opacity:1} 100%{opacity:0} }
 
-    /* ── MOBILE ── */
-    .mobile-reader { display: none; flex: 1; overflow-y: auto; flex-direction: column; align-items: center; gap: 8px; padding: 1rem; }
-    @media (max-width: 600px) {
-      .stage { display: none; }
-      .mobile-reader { display: flex; }
-      .tb-sep, .tb-page { display: none; }
-    }
-
-    /* ── FULLSCREEN adjustment ── */
     :fullscreen .toolbar, :-webkit-full-screen .toolbar { z-index: 100; }
-
-    /* ── PDF VIEW ── */
-    .pdf-view {
-      display: none; flex: 1; overflow-y: auto;
-      flex-direction: column; align-items: center;
-      gap: 12px; padding: 1.5rem 1rem; background: #2a2a2a;
-    }
-    .pdf-view.active { display: flex; }
-    .pdf-view canvas { box-shadow: 0 4px 24px rgba(0,0,0,0.5); display: block; }
-
-    /* View toggle button — slightly wider than icon-only */
-    .tb-view-toggle {
-      background: #2e2e2e; border: 1px solid #3a3a3a; color: #ccc;
-      border-radius: 4px; cursor: pointer; display: flex; align-items: center;
-      gap: 5px; padding: 0 10px; height: 30px; font-size: 0.72rem;
-      font-family: var(--sans); white-space: nowrap; transition: background 0.15s, color 0.15s;
-      flex-shrink: 0;
-    }
-    .tb-view-toggle:hover { background: #3a3a3a; color: #fff; }
-    .tb-view-toggle:disabled { opacity: 0.3; cursor: default; }
   </style>
 </head>
 <body>
 
 <div class="toolbar">
   <a class="tb-back" href="index.html">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-    All Publications
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    <span>All Publications</span>
   </a>
   <span class="tb-title" id="doc-title">Loading…</span>
   <div class="tb-sep"></div>
 
   <button class="tb-btn" id="btn-first" title="First page" disabled onclick="goFirst()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
   </button>
   <button class="tb-btn" id="btn-prev" title="Previous page" disabled onclick="goPrev()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
   </button>
   <span class="tb-page" id="page-indicator">— / —</span>
   <button class="tb-btn" id="btn-next" title="Next page" disabled onclick="goNext()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
   </button>
   <button class="tb-btn" id="btn-last" title="Last page" disabled onclick="goLast()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
   </button>
   <div class="tb-sep"></div>
 
   <button class="tb-btn" id="btn-zoom" title="Zoom" onclick="toggleZoom()">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>
   </button>
   <button class="tb-btn" id="btn-tiles" title="Page thumbnails" onclick="toggleTiles()">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
   </button>
   <button class="tb-btn" id="btn-search" title="Search" onclick="toggleSearch()">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
   </button>
   <button class="tb-btn" id="btn-fs" title="Fullscreen" onclick="toggleFullscreen()">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
   </button>
   <div class="tb-sep"></div>
 
-  <button class="tb-view-toggle" id="btn-view-toggle" disabled onclick="toggleViewMode()" title="Switch between flipbook and PDF view">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    PDF View
+  <button class="tb-view-toggle" id="btn-view-toggle" disabled onclick="toggleViewMode()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <span>PDF View</span>
   </button>
-
   <div class="tb-sep"></div>
 
   <a class="tb-download" id="dl-btn" href="#" download>
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     Download
   </a>
 </div>
 
-<!-- Zoom popup (absolute, above stage) -->
+<!-- Zoom popup -->
 <div class="zoom-popup" id="zoom-popup">
   <button onclick="changeZoom(-0.1)">−</button>
   <span class="zoom-label" id="zoom-label">100%</span>
@@ -251,16 +239,14 @@
   <div class="tile-grid" id="tile-grid"></div>
 </div>
 
-<!-- Main body: search sidebar + stage -->
 <div class="body-wrap">
-
-  <!-- Search sidebar (slides in from left) -->
+  <!-- Search sidebar -->
   <div class="search-sidebar" id="search-sidebar">
     <div class="search-inner">
       <div class="search-header">
         <span>Search</span>
-        <button class="search-close" onclick="toggleSearch()" title="Close search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <button class="search-close" onclick="toggleSearch()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
       <div class="search-row">
@@ -272,29 +258,30 @@
     </div>
   </div>
 
-  <!-- Stage -->
-  <div class="stage" id="stage">
-    <div class="loading" id="loading">
-      <span class="load-title" id="load-title">Preparing document…</span>
-      <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
-      <span class="load-status" id="load-status">Starting…</span>
+  <!-- Stage: flipbook + PDF view live side by side, visibility toggled -->
+  <div style="flex:1;display:flex;overflow:hidden;position:relative;">
+
+    <div class="stage" id="stage">
+      <div class="loading" id="loading">
+        <span class="load-title" id="load-title">Preparing document…</span>
+        <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+        <span class="load-status" id="load-status">Starting…</span>
+      </div>
+      <div class="error" id="error">
+        <h2>Could not load document</h2>
+        <p id="error-msg">The PDF could not be found. Check the file is in the pdfs/ folder and publications.json is correct.</p>
+        <a href="index.html">← Back to publications</a>
+      </div>
+      <div id="flipbook-container">
+        <div id="flipbook"></div>
+      </div>
     </div>
-    <div class="error" id="error">
-      <h2>Could not load document</h2>
-      <p id="error-msg">The PDF could not be found. Check the file is in the pdfs/ folder and publications.json is correct.</p>
-      <a href="index.html">← Back to publications</a>
-    </div>
-    <div id="flipbook-container">
-      <div id="flipbook"></div>
-    </div>
+
+    <!-- PDF scroll view -->
+    <div class="pdf-view" id="pdf-view"></div>
+
   </div>
-
-  <!-- Standard PDF view (scroll through all pages) -->
-  <div class="pdf-view" id="pdf-view"></div>
-
 </div>
-
-<div class="mobile-reader" id="mobile-reader"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
@@ -305,7 +292,9 @@
   const params   = new URLSearchParams(window.location.search);
   const pdfFile  = params.get('file')  || '';
   const pdfTitle = params.get('title') || 'Document';
-  const isMobile = window.innerWidth <= 600;
+
+  // Mobile = portrait phone; tablet/desktop = dual-page flipbook
+  const isMobile = window.innerWidth < 768;
 
   document.title = pdfTitle + ' — DoMS Publications';
   document.getElementById('doc-title').textContent  = pdfTitle;
@@ -314,19 +303,23 @@
   document.getElementById('dl-btn').download = pdfFile.split('/').pop();
 
   // ── State ──
-  let pageFlip    = null;
-  let pdfDocRef   = null;
-  let totalPages  = 0;
-  let currentPage = 1;
-  let zoomLevel   = 1.0;
-  let allDataUrls = [];
-  let thumbUrls   = [];
+  let pageFlip      = null;
+  let pdfDocRef     = null;
+  let totalPages    = 0;
+  let currentPage   = 1;
+  let zoomLevel     = 1.0;
+  let viewMode      = 'flipbook';
+  let allDataUrls   = [];
+  let thumbUrls     = [];
+  let pdfCanvases   = [];   // canvas elements in PDF view, indexed by page
   let dispW = 0, dispH = 0, srcW = 0, srcH = 0;
+  let pdfViewRendered = false;
 
   const RENDER_SCALE = 2.5;
   const THUMB_SCALE  = 0.3;
+  const PDF_VIEW_SCALE = 1.8;
 
-  // ── Utilities ──
+  // ── Helpers ──
   function setProgress(pct, msg) {
     document.getElementById('progress-bar').style.width = pct + '%';
     document.getElementById('load-status').textContent  = msg;
@@ -351,18 +344,7 @@
     return canvas;
   }
 
-  // ── MOBILE ──
-  async function loadMobile(pdfDoc) {
-    const container = document.getElementById('mobile-reader');
-    for (let i = 1; i <= pdfDoc.numPages; i++) {
-      setProgress(Math.round((i / pdfDoc.numPages) * 100), `Page ${i} of ${pdfDoc.numPages}`);
-      const c = await renderPageToCanvas(pdfDoc, i, 1.5);
-      container.appendChild(c);
-    }
-    document.getElementById('loading').classList.add('hidden');
-  }
-
-  // ── DESKTOP FLIPBOOK ──
+  // ── LOAD FLIPBOOK ──
   async function loadFlipbook(pdfDoc) {
     totalPages = pdfDoc.numPages;
 
@@ -371,12 +353,20 @@
     srcW = firstFull.width;
     srcH = firstFull.height;
 
-    const stageH = window.innerHeight - 52 - 32;
-    const stageW = window.innerWidth  - 32;
-    const dScale = Math.min(stageH / srcH, (stageW / 2) / srcW, 1);
+    // For mobile: single page fits full width
+    // For desktop: two pages side-by-side
+    const stageH  = window.innerHeight - 52 - 24;
+    const stageW  = window.innerWidth  - 24;
+    let dScale;
+    if (isMobile) {
+      dScale = Math.min(stageH / srcH, stageW / srcW, 1);
+    } else {
+      dScale = Math.min(stageH / srcH, (stageW / 2) / srcW, 1);
+    }
     dispW = Math.floor(srcW * dScale);
     dispH = Math.floor(srcH * dScale);
 
+    // Render all pages
     allDataUrls = [firstFull.toDataURL('image/png')];
     const firstThumb = await renderPageToCanvas(pdfDoc, 1, THUMB_SCALE);
     thumbUrls = [firstThumb.toDataURL('image/jpeg', 0.75)];
@@ -394,12 +384,17 @@
     const container = document.getElementById('flipbook-container');
     const flipEl    = document.getElementById('flipbook');
     flipEl.innerHTML = '';
-    flipEl.style.cssText = `width:${dispW * 2}px;height:${dispH}px;`;
+
+    // For mobile single-page: container = 1 page wide
+    // For desktop dual-page: container = 2 pages wide
+    const containerW = isMobile ? dispW : dispW * 2;
+    flipEl.style.cssText    = `width:${containerW}px;height:${dispH}px;`;
+    container.style.cssText = `width:${containerW}px;height:${dispH}px;transform-origin:center center;`;
 
     allDataUrls.forEach((url, idx) => {
       const div = document.createElement('div');
       div.className = 'page';
-      div.dataset.pageNum = idx + 1;  // tag each page div with its number
+      div.dataset.pageNum = idx + 1;
       div.style.cssText = `width:${dispW}px;height:${dispH}px;overflow:hidden;background:#fff;position:relative;`;
       const img = document.createElement('img');
       img.src = url;
@@ -408,14 +403,17 @@
       flipEl.appendChild(div);
     });
 
-    container.style.cssText = `width:${dispW * 2}px;height:${dispH}px;transform-origin:center center;`;
-
     setProgress(96, 'Initialising…');
 
     pageFlip = new St.PageFlip(container, {
-      width: dispW, height: dispH, size: 'fixed',
-      showCover: true, mobileScrollSupport: false,
-      usePortrait: false, flippingTime: 700, maxShadowOpacity: 0.5,
+      width:  dispW,
+      height: dispH,
+      size:   'fixed',
+      showCover:   true,
+      usePortrait: isMobile,   // portrait mode for single-page on mobile
+      mobileScrollSupport: false,
+      flippingTime: 600,
+      maxShadowOpacity: 0.5,
     });
 
     pageFlip.loadFromHTML(flipEl.querySelectorAll('.page'));
@@ -451,12 +449,16 @@
   function goNext()  { pageFlip && pageFlip.flipNext(); }
 
   function goToPage(n, query) {
-    if (!pageFlip) return;
-    // Close tile overlay so flipbook shows
-    document.getElementById('tile-overlay').classList.remove('open');
-    document.getElementById('btn-tiles').classList.remove('active');
-    pageFlip.flip(n - 1);
-    if (query) setTimeout(() => drawHighlights(n, query), 900);
+    if (viewMode === 'flipbook') {
+      document.getElementById('tile-overlay').classList.remove('open');
+      document.getElementById('btn-tiles').classList.remove('active');
+      if (pageFlip) pageFlip.flip(n - 1);
+      if (query) setTimeout(() => drawHighlightsOnFlipbook(n, query), 900);
+    } else {
+      // PDF view: scroll to that page's canvas
+      scrollToPdfPage(n);
+      if (query) setTimeout(() => drawHighlightsOnPdfView(n, query), 100);
+    }
   }
 
   // ── ZOOM ──
@@ -465,46 +467,28 @@
     p.classList.toggle('open');
     document.getElementById('btn-zoom').classList.toggle('active', p.classList.contains('open'));
   }
-
   function applyZoom() {
     document.getElementById('flipbook-container').style.transform = `scale(${zoomLevel})`;
     document.getElementById('zoom-label').textContent = Math.round(zoomLevel * 100) + '%';
   }
-
   function changeZoom(delta) {
     zoomLevel = Math.max(0.3, Math.min(2.5, Math.round((zoomLevel + delta) * 10) / 10));
     applyZoom();
   }
-
   function resetZoom() { zoomLevel = 1.0; applyZoom(); }
 
   // ── FULLSCREEN ──
+  const FS_ICON  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+  const FS_EXIT  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>`;
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
-      document.getElementById('btn-fs').innerHTML = `
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
-          <line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>
-        </svg>`;
     } else {
       document.exitFullscreen();
-      document.getElementById('btn-fs').innerHTML = `
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-          <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-        </svg>`;
     }
   }
-
   document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement) {
-      document.getElementById('btn-fs').innerHTML = `
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-          <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-        </svg>`;
-    }
+    document.getElementById('btn-fs').innerHTML = document.fullscreenElement ? FS_EXIT : FS_ICON;
   });
 
   // ── TILE VIEW ──
@@ -525,7 +509,6 @@
       grid.appendChild(item);
     });
   }
-
   function toggleTiles() {
     const overlay = document.getElementById('tile-overlay');
     overlay.classList.toggle('open');
@@ -534,6 +517,65 @@
       const cur = overlay.querySelector('.current');
       if (cur) cur.scrollIntoView({ block: 'center' });
     }
+  }
+
+  // ── VIEW MODE TOGGLE ──
+  async function toggleViewMode() {
+    if (viewMode === 'flipbook') {
+      viewMode = 'pdf';
+      document.getElementById('stage').style.display = 'none';
+      const pdfViewEl = document.getElementById('pdf-view');
+      pdfViewEl.classList.add('active');
+
+      // Build PDF view on first switch
+      if (!pdfViewRendered && pdfDocRef) {
+        pdfViewEl.innerHTML = '';
+        pdfCanvases = [];
+        for (let i = 1; i <= totalPages; i++) {
+          const wrap = document.createElement('div');
+          wrap.className = 'pdf-page-wrap';
+          wrap.dataset.pageNum = i;
+          const c = await renderPageToCanvas(pdfDocRef, i, PDF_VIEW_SCALE);
+          c.style.cssText = 'max-width:900px;width:100%;display:block;';
+          wrap.appendChild(c);
+          pdfViewEl.appendChild(wrap);
+          pdfCanvases[i] = wrap;
+        }
+        pdfViewRendered = true;
+      }
+
+      document.getElementById('btn-view-toggle').innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+        </svg>
+        <span>Flipbook</span>`;
+      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id =>
+        document.getElementById(id).disabled = true);
+
+    } else {
+      viewMode = 'flipbook';
+      document.getElementById('pdf-view').classList.remove('active');
+      document.getElementById('stage').style.display = '';
+      document.getElementById('btn-view-toggle').innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span>PDF View</span>`;
+      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id =>
+        document.getElementById(id).disabled = false);
+      updateControls();
+    }
+  }
+
+  // ── PDF VIEW: scroll to page ──
+  function scrollToPdfPage(pageNum) {
+    if (!pdfCanvases[pageNum]) return;
+    pdfCanvases[pageNum].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Update page indicator
+    currentPage = pageNum;
+    document.getElementById('page-indicator').textContent = `${currentPage} / ${totalPages}`;
   }
 
   // ── SEARCH ──
@@ -555,7 +597,7 @@
     resultsEl.innerHTML = '';
     statusEl.textContent = 'Searching…';
 
-    // Page number jump
+    // Pure page number jump
     const pageNum = parseInt(query);
     if (!isNaN(pageNum) && String(pageNum) === query && pageNum >= 1 && pageNum <= totalPages) {
       statusEl.textContent = `Jumping to page ${pageNum}`;
@@ -572,11 +614,12 @@
       try {
         const page    = await pdfDocRef.getPage(i);
         const content = await page.getTextContent();
-        const text    = content.items.map(item => item.str).join(' ');
+        const items   = content.items;
+        const text    = items.map(it => it.str).join(' ');
         if (text.toLowerCase().includes(q)) {
           const idx     = text.toLowerCase().indexOf(q);
           const snippet = text.substring(Math.max(0, idx - 40), idx + 80);
-          matches.push({ page: i, snippet, text });
+          matches.push({ page: i, snippet });
         }
       } catch(e) { /* skip */ }
     }
@@ -584,11 +627,11 @@
     if (!matches.length) { statusEl.textContent = `No results for "${query}"`; return; }
     statusEl.textContent = `${matches.length} page${matches.length > 1 ? 's' : ''} found`;
 
+    const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+
     matches.forEach(m => {
       const item = document.createElement('div');
       item.className = 'sr-item';
-      // Highlight the match in snippet
-      const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
       const highlighted = m.snippet.replace(re, s => `<mark>${s}</mark>`);
       item.onclick = () => {
         document.querySelectorAll('.sr-item').forEach(el => el.classList.remove('active-result'));
@@ -605,12 +648,10 @@
     });
   }
 
-  // ── WORD HIGHLIGHT on page ──
-  async function drawHighlights(pageNum, query) {
+  // ── HIGHLIGHT: Flipbook pages ──
+  async function drawHighlightsOnFlipbook(pageNum, query) {
     if (!pdfDocRef || !query) return;
-
-    // Remove all existing highlights
-    document.querySelectorAll('.hl-box').forEach(el => el.remove());
+    document.querySelectorAll('#flipbook .hl-box').forEach(el => el.remove());
 
     try {
       const page     = await pdfDocRef.getPage(pageNum);
@@ -618,52 +659,87 @@
       const viewport = page.getViewport({ scale: RENDER_SCALE });
       const q        = query.toLowerCase();
 
-      // Find the page div by its data-page-num attribute (reliable after StPageFlip reorders DOM)
+      // Find page div by data-page-num (reliable after StPageFlip DOM reorder)
       const pageDiv = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
-      if (!pageDiv) {
-        console.warn('Highlight: could not find page div for page', pageNum);
-        return;
-      }
+      if (!pageDiv) return;
 
-      // Scale: PDF viewport (at RENDER_SCALE) → display pixels
       const scaleX = dispW / viewport.width;
       const scaleY = dispH / viewport.height;
 
       let count = 0;
       content.items.forEach(item => {
-        if (!item.str.toLowerCase().includes(q)) return;
-        if (count >= 12) return; // cap at 12 highlights per page
-
+        if (!item.str.toLowerCase().includes(q) || count >= 15) return;
         const tx    = item.transform[4];
         const ty    = item.transform[5];
         const itemH = Math.abs(item.height || 10);
         const itemW = Math.abs(item.width  || 50);
-
-        // PDF origin is bottom-left; CSS origin is top-left
         const x = tx * scaleX;
         const y = (viewport.height - ty - itemH) * scaleY;
         const w = itemW * scaleX;
         const h = itemH * scaleY * 1.4;
-
-        // Skip out-of-bounds
-        if (x < -10 || y < -10 || x > dispW + 10 || y > dispH + 10) return;
-
+        if (x < -5 || y < -5 || x > dispW + 5 || y > dispH + 5) return;
         const box = document.createElement('div');
         box.className = 'hl-box';
         box.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;`;
         pageDiv.appendChild(box);
         count++;
       });
-
-      console.log(`Highlighted ${count} matches for "${query}" on page ${pageNum}`);
-    } catch(e) { console.warn('Highlight error:', e); }
+    } catch(e) { console.warn('Flipbook highlight error:', e); }
   }
 
-  // ── KEYBOARD SHORTCUTS ──
+  // ── HIGHLIGHT: PDF view pages ──
+  async function drawHighlightsOnPdfView(pageNum, query) {
+    if (!pdfDocRef || !query || !pdfCanvases[pageNum]) return;
+
+    // Remove existing highlights on this page
+    pdfCanvases[pageNum].querySelectorAll('.hl-box').forEach(el => el.remove());
+
+    try {
+      const page     = await pdfDocRef.getPage(pageNum);
+      const content  = await page.getTextContent();
+      const viewport = page.getViewport({ scale: PDF_VIEW_SCALE });
+      const q        = query.toLowerCase();
+
+      const wrap   = pdfCanvases[pageNum];
+      const canvas = wrap.querySelector('canvas');
+      if (!canvas) return;
+
+      // Scale from PDF_VIEW_SCALE viewport → actual canvas display size
+      const displayW = canvas.offsetWidth  || canvas.width  / (window.devicePixelRatio || 1);
+      const displayH = canvas.offsetHeight || canvas.height / (window.devicePixelRatio || 1);
+      const scaleX   = displayW / viewport.width;
+      const scaleY   = displayH / viewport.height;
+
+      let count = 0;
+      content.items.forEach(item => {
+        if (!item.str.toLowerCase().includes(q) || count >= 15) return;
+        const tx    = item.transform[4];
+        const ty    = item.transform[5];
+        const itemH = Math.abs(item.height || 10);
+        const itemW = Math.abs(item.width  || 50);
+        const x = tx * scaleX;
+        const y = (viewport.height - ty - itemH) * scaleY;
+        const w = itemW * scaleX;
+        const h = itemH * scaleY * 1.4;
+        if (x < -5 || y < -5) return;
+        const box = document.createElement('div');
+        box.className = 'hl-box';
+        box.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;`;
+        wrap.appendChild(box);
+        count++;
+      });
+    } catch(e) { console.warn('PDF view highlight error:', e); }
+  }
+
+  // ── KEYBOARD ──
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goNext();
-    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goPrev();
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      viewMode === 'flipbook' ? goNext() : null;
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      viewMode === 'flipbook' ? goPrev() : null;
+    }
     if (e.key === 'f' || e.key === 'F') toggleFullscreen();
     if (e.key === '+' || e.key === '=') changeZoom(0.1);
     if (e.key === '-') changeZoom(-0.1);
@@ -677,65 +753,12 @@
     }
   });
 
-  // Close zoom popup when clicking outside
   document.addEventListener('click', e => {
     if (!e.target.closest('#zoom-popup') && !e.target.closest('#btn-zoom')) {
       document.getElementById('zoom-popup').classList.remove('open');
       document.getElementById('btn-zoom').classList.remove('active');
     }
   });
-
-  // ── VIEW MODE TOGGLE ──
-  let viewMode = 'flipbook'; // 'flipbook' | 'pdf'
-  let pdfViewRendered = false;
-
-  async function toggleViewMode() {
-    if (viewMode === 'flipbook') {
-      // Switch to PDF view
-      viewMode = 'pdf';
-      document.getElementById('flipbook-container').style.display = 'none';
-      document.getElementById('stage').style.display = 'none';
-      const pdfViewEl = document.getElementById('pdf-view');
-      pdfViewEl.classList.add('active');
-      // Render all pages to pdf-view if not done yet
-      if (!pdfViewRendered && pdfDocRef) {
-        pdfViewEl.innerHTML = '<div style="color:#666;font-size:0.82rem;padding:2rem;">Rendering pages…</div>';
-        pdfViewEl.innerHTML = '';
-        for (let i = 1; i <= totalPages; i++) {
-          const c = await renderPageToCanvas(pdfDocRef, i, 1.5);
-          c.style.maxWidth = '900px';
-          c.style.width = '100%';
-          pdfViewEl.appendChild(c);
-        }
-        pdfViewRendered = true;
-      }
-      // Update toggle button
-      document.getElementById('btn-view-toggle').innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
-        </svg>
-        Flipbook`;
-      // Disable flipbook-only controls
-      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id => {
-        document.getElementById(id).disabled = true;
-      });
-    } else {
-      // Switch back to flipbook
-      viewMode = 'flipbook';
-      document.getElementById('pdf-view').classList.remove('active');
-      document.getElementById('stage').style.display = '';
-      document.getElementById('flipbook-container').style.display = 'block';
-      document.getElementById('btn-view-toggle').innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-        </svg>
-        PDF View`;
-      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id => {
-        document.getElementById(id).disabled = false;
-      });
-      updateControls();
-    }
-  }
 
   // ── BOOT ──
   async function boot() {
@@ -744,13 +767,13 @@
       setProgress(2, 'Fetching document…');
       const absoluteUrl = new URL(pdfFile, window.location.href).href;
       const pdfDoc = await pdfjsLib.getDocument({
-        url: absoluteUrl, withCredentials: false,
+        url: absoluteUrl,
+        withCredentials: false,
         cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
         cMapPacked: true,
       }).promise;
       pdfDocRef = pdfDoc;
-      if (isMobile) { await loadMobile(pdfDoc); }
-      else          { await loadFlipbook(pdfDoc); }
+      await loadFlipbook(pdfDoc);
     } catch(e) {
       console.error('FLIPBOOK ERROR:', e);
       showError(`Could not load "${pdfFile}". Make sure the file exists in the pdfs/ folder.`);
