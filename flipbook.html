@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <title>Reader — DoMS Publications</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -19,9 +18,6 @@
     html, body { height: 100%; overflow: hidden; background: #2a2a2a; font-family: var(--sans); }
     body { display: flex; flex-direction: column; }
 
-    /* ════════════════════════════════
-       DESKTOP TOOLBAR (top)
-    ════════════════════════════════ */
     .toolbar {
       height: var(--toolbar-h); background: #181818;
       display: flex; align-items: center; padding: 0 0.75rem;
@@ -60,17 +56,12 @@
     .tb-view-toggle:hover:not(:disabled) { background: #3a3a3a; color: #fff; }
     .tb-view-toggle:disabled { opacity: 0.3; cursor: default; }
 
-    /* ════════════════════════════════
-       MOBILE — hide desktop toolbar, show bottom bar
-    ════════════════════════════════ */
     @media (max-width: 700px) {
       .toolbar { display: none; }
       .mobile-topbar { display: flex !important; }
       .mobile-bottombar { display: flex !important; }
       .body-wrap { padding-bottom: var(--bottom-h); }
     }
-
-    /* ── MOBILE TOP BAR (title + nav) ── */
     .mobile-topbar {
       display: none; height: var(--toolbar-h); background: #181818;
       align-items: center; padding: 0 0.75rem; gap: 8px;
@@ -89,8 +80,6 @@
     }
     .mob-btn:disabled { opacity: 0.3; }
     .mob-btn:active { background: #333; }
-
-    /* ── MOBILE BOTTOM BAR ── */
     .mobile-bottombar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
       height: var(--bottom-h); background: #181818; border-top: 1px solid #2e2e2e;
@@ -105,9 +94,6 @@
     .mob-action:active, .mob-action.active { background: #2e2e2e; color: #fff; }
     .mob-action span { font-size: 0.6rem; letter-spacing: 0.04em; text-transform: uppercase; }
 
-    /* ════════════════════════════════
-       ZOOM POPUP
-    ════════════════════════════════ */
     .zoom-popup {
       display: none; position: fixed; top: calc(var(--toolbar-h) + 4px); right: 170px;
       background: #222; border: 1px solid #3a3a3a; border-radius: 6px;
@@ -121,18 +107,14 @@
     .zoom-popup button:hover { background: #444; color: #fff; }
     .zoom-label { font-size: 0.78rem; color: #aaa; min-width: 42px; text-align: center; }
     @media (max-width: 700px) {
-      .zoom-popup { top: calc(var(--toolbar-h) + var(--bottom-h) + 4px); right: 8px; }
+      .zoom-popup { top: calc(var(--toolbar-h) + 4px); right: 8px; }
     }
 
-    /* ════════════════════════════════
-       TILE OVERLAY
-    ════════════════════════════════ */
     .tile-overlay {
       display: none; position: fixed; inset: 0; top: var(--toolbar-h);
       background: #1e1e1e; z-index: 150; overflow-y: auto; padding: 1.5rem;
     }
     .tile-overlay.open { display: block; }
-    @media (max-width: 700px) { .tile-overlay { top: var(--toolbar-h); } }
     .tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; max-width: 1200px; margin: 0 auto; }
     .tile-item {
       cursor: pointer; border-radius: 4px; overflow: hidden;
@@ -143,9 +125,6 @@
     .tile-item img { width: 100%; display: block; }
     .tile-page-num { text-align: center; font-size: 0.62rem; color: #888; padding: 4px 0; background: #222; }
 
-    /* ════════════════════════════════
-       BODY + SEARCH SIDEBAR
-    ════════════════════════════════ */
     .body-wrap { flex: 1; display: flex; overflow: hidden; position: relative; }
     .search-sidebar {
       width: 0; flex-shrink: 0; background: #1a1a1a;
@@ -189,18 +168,15 @@
     .sr-match { font-size: 0.73rem; color: #bbb; line-height: 1.5; word-break: break-word; }
     .sr-match mark { background: rgba(160,20,20,0.5); color: #ff9999; border-radius: 2px; padding: 0 2px; font-style: normal; }
 
-    /* ════════════════════════════════
-       STAGE + FLIPBOOK
-    ════════════════════════════════ */
     .main-area { flex: 1; display: flex; overflow: hidden; }
     .stage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
     #flipbook-container { position: relative; display: none; transform-origin: center center; }
-    .stf__wrapper { border-radius: 2px; }
 
-    /* ════════════════════════════════
-       PDF SCROLL VIEW
-       FIX: constrain width to viewport on mobile
-    ════════════════════════════════ */
+    /* ── PDF scroll view ──────────────────────────────────────────
+       Each .pdf-page-wrap is sized in canvas PIXEL dimensions by JS.
+       CSS max-width constrains it on mobile; the browser scales
+       width:100% canvas + absolute overlays proportionally together.
+    ───────────────────────────────────────────────────────────── */
     .pdf-view {
       display: none; flex: 1; overflow-y: auto; overflow-x: hidden;
       flex-direction: column; align-items: center; gap: 16px; padding: 1.5rem 1rem;
@@ -208,63 +184,56 @@
     .pdf-view.active { display: flex; }
     .pdf-page-wrap {
       position: relative; flex-shrink: 0;
-      overflow: hidden;
-      /* Size is set inline by JS to match viewport CSS dimensions */
-    }
-    .pdf-page-wrap canvas {
-      display: block;
+      /* limit to viewport on mobile; browser scales height proportionally */
+      max-width: calc(100vw - 2rem);
       box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-      /* Fill the wrap exactly — wrap is sized to viewport CSS px, canvas may have more
-         device pixels but must occupy the same CSS area so textLayer aligns perfectly */
-      width: 100%;
-      height: 100%;
     }
+    /* canvas fills the wrapper at its natural size, shrinks on mobile via max-width */
+    .pdf-page-wrap canvas { display: block; width: 100%; height: auto; }
 
-    /* ── PDF.js text layer (for highlight + text selection only) ── */
-    .textLayer {
-      position: absolute; inset: 0; overflow: hidden;
-      line-height: 1;
-      /* text layer sits BELOW link overlays — pointer-events only on highlight spans */
+    /* Text layer — invisible spans for highlight only; never intercept clicks */
+    .pdf-text-layer {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
       pointer-events: none;
-      z-index: 1;
+      overflow: hidden;
     }
-    .textLayer > span {
-      color: transparent; position: absolute; white-space: pre;
-      cursor: text; transform-origin: 0% 0%;
-      /* spans are NOT pointer-events:auto — links sit above and must receive clicks */
+    .pdf-text-layer span {
+      position: absolute;
+      color: transparent;
+      white-space: pre;
+      transform-origin: 0% 0%;
       pointer-events: none;
     }
-    .textLayer .highlight {
-      /* darker amber — clearly visible on white PDF pages */
-      background: rgba(195, 120, 0, 0.82) !important;
+    /* Search highlight — darker amber, clearly visible on white page */
+    .pdf-text-layer span.hl {
+      background: rgba(175, 100, 0, 0.80);
       border-radius: 2px;
-      outline: 1px solid rgba(160, 90, 0, 0.6);
     }
-    .textLayer .selected { background: rgba(0, 100, 255, 0.3) !important; }
 
-    /* ── Link overlays — rendered ABOVE text layer so clicks land here ── */
-    .link-overlay {
-      position: absolute; cursor: pointer;
-      z-index: 5;   /* above textLayer(z=1), below nothing */
-      border: 1px solid rgba(100,160,255,0.40);
-      background: rgba(100,160,255,0.10);
-      border-radius: 2px; transition: background 0.15s;
+    /* Link overlays — percentage-based so they scale with the wrap */
+    .pdf-link {
+      position: absolute;
       pointer-events: auto;
+      cursor: pointer;
+      z-index: 5;
+      background: rgba(70, 130, 255, 0.07);
+      border: 1px solid rgba(70, 130, 255, 0.28);
+      border-radius: 2px;
+      transition: background 0.12s;
     }
-    .link-overlay:hover { background: rgba(100,160,255,0.28); }
+    .pdf-link:hover { background: rgba(70, 130, 255, 0.20); }
 
-    /* ── Flipbook page highlight box ── */
+    /* Flipbook highlight box */
     .hl-box {
-      position: absolute; background: rgba(195,120,0,0.82);
-      pointer-events: none; border-radius: 2px; z-index: 5;
-      box-shadow: 0 0 0 1px rgba(140,80,0,0.75);
+      position: absolute;
+      background: rgba(175, 100, 0, 0.80);
+      pointer-events: none; border-radius: 2px; z-index: 6;
+      box-shadow: 0 0 0 1.5px rgba(120, 60, 0, 0.9);
       animation: hl-fade 5s forwards;
     }
-    @keyframes hl-fade { 0%,80%{opacity:1} 100%{opacity:0} }
+    @keyframes hl-fade { 0%,75%{opacity:1} 100%{opacity:0} }
 
-    /* ════════════════════════════════
-       LOADING + ERROR
-    ════════════════════════════════ */
     .loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.25rem; background: #2a2a2a; z-index: 20; }
     .loading.hidden { display: none; }
     .load-title { color: #ccc; font-size: 0.88rem; text-align: center; padding: 0 2rem; }
@@ -276,13 +245,11 @@
     .error h2 { color: #ddd; font-size: 1rem; font-weight: 500; }
     .error p { color: #777; font-size: 0.82rem; max-width: 340px; line-height: 1.6; }
     .error a { color: #c06060; font-size: 0.82rem; }
-
     :fullscreen .toolbar, :-webkit-full-screen .toolbar { z-index: 100; }
   </style>
 </head>
 <body>
 
-<!-- ═══ DESKTOP TOOLBAR ═══ -->
 <div class="toolbar">
   <a class="tb-back" href="index.html">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -328,7 +295,6 @@
   </a>
 </div>
 
-<!-- ═══ MOBILE TOP BAR ═══ -->
 <div class="mobile-topbar">
   <a class="mob-back" href="index.html">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -346,7 +312,6 @@
   </div>
 </div>
 
-<!-- ═══ ZOOM POPUP ═══ -->
 <div class="zoom-popup" id="zoom-popup">
   <button onclick="changeZoom(-0.15)">−</button>
   <span class="zoom-label" id="zoom-label">100%</span>
@@ -354,14 +319,11 @@
   <button onclick="resetZoom()" style="font-size:0.7rem;width:auto;padding:0 8px;">Reset</button>
 </div>
 
-<!-- ═══ TILE OVERLAY ═══ -->
 <div class="tile-overlay" id="tile-overlay">
   <div class="tile-grid" id="tile-grid"></div>
 </div>
 
-<!-- ═══ MAIN BODY ═══ -->
 <div class="body-wrap">
-  <!-- Search sidebar -->
   <div class="search-sidebar" id="search-sidebar">
     <div class="search-inner">
       <div class="search-header">
@@ -379,7 +341,6 @@
     </div>
   </div>
 
-  <!-- Stage + PDF view -->
   <div class="main-area">
     <div class="stage" id="stage">
       <div class="loading" id="loading">
@@ -398,7 +359,6 @@
   </div>
 </div>
 
-<!-- ═══ MOBILE BOTTOM BAR ═══ -->
 <div class="mobile-bottombar" id="mobile-bottombar">
   <button class="mob-action" id="mob-tiles" onclick="toggleTiles()">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -423,591 +383,550 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.js"></script>
 <script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  const params   = new URLSearchParams(window.location.search);
-  const pdfFile  = params.get('file')  || '';
-  const pdfTitle = params.get('title') || 'Document';
-  const isMobile = window.innerWidth <= 700;
+const params   = new URLSearchParams(window.location.search);
+const pdfFile  = params.get('file')  || '';
+const pdfTitle = params.get('title') || 'Document';
+const isMobile = window.innerWidth <= 700;
 
-  // Set titles and download links
-  document.title = pdfTitle + ' — DoMS Publications';
-  ['doc-title','mob-title','load-title'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = pdfTitle;
-  });
-  document.getElementById('dl-btn').href     = pdfFile;
-  document.getElementById('dl-btn').download = pdfFile.split('/').pop();
-  const mobDl = document.getElementById('mob-dl');
-  mobDl.href = pdfFile; mobDl.download = pdfFile.split('/').pop();
+document.title = pdfTitle + ' — DoMS Publications';
+['doc-title','mob-title','load-title'].forEach(id => {
+  const el = document.getElementById(id); if (el) el.textContent = pdfTitle;
+});
+document.getElementById('dl-btn').href     = pdfFile;
+document.getElementById('dl-btn').download = pdfFile.split('/').pop();
+const mobDl = document.getElementById('mob-dl');
+mobDl.href = pdfFile; mobDl.download = pdfFile.split('/').pop();
 
-  // ── State ──
-  let pageFlip        = null;
-  let pdfDocRef       = null;
-  let totalPages      = 0;
-  let currentPage     = 1;
-  let zoomLevel       = 1.0;
-  let viewMode        = 'flipbook';
-  let allDataUrls     = [];
-  let thumbUrls       = [];
-  let pdfPageWraps    = [];   // {wrap, canvas, textLayer} per page in PDF view
-  let pdfViewBuilt    = false;
-  let dispW = 0, dispH = 0;
+// ── State ──────────────────────────────────────────────────────
+let pageFlip     = null;
+let pdfDocRef    = null;
+let totalPages   = 0;
+let currentPage  = 1;
+let zoomLevel    = 1.0;
+let viewMode     = 'flipbook';
+let allDataUrls  = [];
+let thumbUrls    = [];
+let pdfPageWraps = [];   // 1-indexed: { el, tl }
+let pdfViewBuilt = false;
+let dispW = 0, dispH = 0;
 
-  const RENDER_SCALE   = 2.5;
-  const THUMB_SCALE    = 0.28;
-  const PDF_VIEW_SCALE = 1.8;
+// Scale for flipbook image rendering and PDF view rendering
+// Both use the same high-quality scale so switching modes looks identical.
+const RENDER_SCALE = 2.5;
+const THUMB_SCALE  = 0.28;
 
-  // ── Utils ──
-  function setProgress(pct, msg) {
-    document.getElementById('progress-bar').style.width = pct + '%';
-    document.getElementById('load-status').textContent  = msg;
-  }
-  function showError(msg) {
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('error-msg').textContent = msg;
-    document.getElementById('error').classList.add('show');
-  }
-  async function renderToCanvas(pdfDoc, pageNum, scale) {
-    const page = await pdfDoc.getPage(pageNum);
-    const vp   = page.getViewport({ scale });
-    const c    = document.createElement('canvas');
-    c.width    = Math.floor(vp.width);
-    c.height   = Math.floor(vp.height);
-    const ctx  = c.getContext('2d');
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
-    return { canvas: c, page, viewport: vp };
-  }
+// ── Render one page to canvas ───────────────────────────────────
+async function renderPage(pdfDoc, pageNum, scale) {
+  const page = await pdfDoc.getPage(pageNum);
+  const vp   = page.getViewport({ scale });
+  const c    = document.createElement('canvas');
+  c.width    = Math.floor(vp.width);
+  c.height   = Math.floor(vp.height);
+  const ctx  = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  return { canvas: c, page, viewport: vp };
+}
 
-  // ── LOAD FLIPBOOK ──
-  async function loadFlipbook(pdfDoc) {
-    totalPages = pdfDoc.numPages;
+// ── Load flipbook ───────────────────────────────────────────────
+async function loadFlipbook(pdfDoc) {
+  totalPages = pdfDoc.numPages;
+  setProgress(3, 'Calculating layout…');
 
-    setProgress(3, 'Calculating layout…');
-    const { canvas: fc } = await renderToCanvas(pdfDoc, 1, RENDER_SCALE);
-    const srcW = fc.width, srcH = fc.height;
+  const { canvas: fc } = await renderPage(pdfDoc, 1, RENDER_SCALE);
+  const srcW = fc.width, srcH = fc.height;
+  const stageH = window.innerHeight - (isMobile ? 52 + 56 : 52) - 20;
+  const stageW = window.innerWidth  - 20;
+  const dScale = isMobile
+    ? Math.min(stageH / srcH, stageW / srcW, 1)
+    : Math.min(stageH / srcH, (stageW / 2) / srcW, 1);
+  dispW = Math.floor(srcW * dScale);
+  dispH = Math.floor(srcH * dScale);
 
-    const stageH = window.innerHeight - (isMobile ? 52 + 56 : 52) - 20;
-    const stageW = window.innerWidth  - 20;
-    const dScale = isMobile
-      ? Math.min(stageH / srcH, stageW / srcW, 1)
-      : Math.min(stageH / srcH, (stageW / 2) / srcW, 1);
-    dispW = Math.floor(srcW * dScale);
-    dispH = Math.floor(srcH * dScale);
+  allDataUrls = [fc.toDataURL('image/png')];
+  const { canvas: ft } = await renderPage(pdfDoc, 1, THUMB_SCALE);
+  thumbUrls = [ft.toDataURL('image/jpeg', 0.75)];
 
-    allDataUrls = [fc.toDataURL('image/png')];
-    const { canvas: ft } = await renderToCanvas(pdfDoc, 1, THUMB_SCALE);
-    thumbUrls = [ft.toDataURL('image/jpeg', 0.75)];
-
-    for (let i = 2; i <= totalPages; i++) {
-      setProgress(Math.round((i / totalPages) * 88), `Rendering page ${i} of ${totalPages}…`);
-      const { canvas: full  } = await renderToCanvas(pdfDoc, i, RENDER_SCALE);
-      allDataUrls.push(full.toDataURL('image/png'));
-      const { canvas: thumb } = await renderToCanvas(pdfDoc, i, THUMB_SCALE);
-      thumbUrls.push(thumb.toDataURL('image/jpeg', 0.75));
-    }
-
-    setProgress(92, 'Building flipbook…');
-
-    const container = document.getElementById('flipbook-container');
-    const flipEl    = document.getElementById('flipbook');
-    flipEl.innerHTML = '';
-    const containerW = isMobile ? dispW : dispW * 2;
-    flipEl.style.cssText    = `width:${containerW}px;height:${dispH}px;`;
-    container.style.cssText = `width:${containerW}px;height:${dispH}px;transform-origin:center center;`;
-
-    allDataUrls.forEach((url, idx) => {
-      const div = document.createElement('div');
-      div.className = 'page';
-      div.dataset.pageNum = idx + 1;
-      div.style.cssText = `width:${dispW}px;height:${dispH}px;overflow:hidden;background:#fff;position:relative;`;
-      const img = document.createElement('img');
-      img.src = url;
-      img.style.cssText = `width:${dispW}px;height:${dispH}px;display:block;`;
-      div.appendChild(img);
-      flipEl.appendChild(div);
-    });
-
-    setProgress(96, 'Initialising…');
-    pageFlip = new St.PageFlip(container, {
-      width: dispW, height: dispH, size: 'fixed',
-      showCover: true, usePortrait: isMobile,
-      mobileScrollSupport: false,
-      flippingTime: 600, maxShadowOpacity: 0.5,
-    });
-    pageFlip.loadFromHTML(flipEl.querySelectorAll('.page'));
-    pageFlip.on('flip', e => { currentPage = e.data + 1; updateControls(); });
-
-    setProgress(100, 'Ready');
-    document.getElementById('loading').classList.add('hidden');
-    container.style.display = 'block';
-    enableControls();
-    updateControls();
-    buildTileGrid();
+  for (let i = 2; i <= totalPages; i++) {
+    setProgress(Math.round((i / totalPages) * 88), `Rendering page ${i} of ${totalPages}…`);
+    const { canvas: full  } = await renderPage(pdfDoc, i, RENDER_SCALE);
+    allDataUrls.push(full.toDataURL('image/png'));
+    const { canvas: thumb } = await renderPage(pdfDoc, i, THUMB_SCALE);
+    thumbUrls.push(thumb.toDataURL('image/jpeg', 0.75));
   }
 
-  // ── CONTROLS ──
-  function enableControls() {
-    ['btn-first','btn-prev','btn-next','btn-last','btn-zoom','btn-tiles','btn-search','btn-fs','btn-view-toggle']
-      .forEach(id => { const el = document.getElementById(id); if(el) el.disabled = false; });
-    ['mob-prev','mob-next','mob-tiles','mob-search-btn','mob-view-btn','mob-fs-btn']
-      .forEach(id => { const el = document.getElementById(id); if(el) el.disabled = false; });
-  }
-  function updateControls() {
-    const txt = `${currentPage} / ${totalPages}`;
-    const el1 = document.getElementById('page-indicator');
-    const el2 = document.getElementById('mob-page');
-    if(el1) el1.textContent = txt;
-    if(el2) el2.textContent = txt;
-    document.getElementById('btn-first').disabled = currentPage <= 1;
-    document.getElementById('btn-prev').disabled  = currentPage <= 1;
-    document.getElementById('btn-next').disabled  = currentPage >= totalPages;
-    document.getElementById('btn-last').disabled  = currentPage >= totalPages;
-    const mp = document.getElementById('mob-prev');
-    const mn = document.getElementById('mob-next');
-    if(mp) mp.disabled = currentPage <= 1;
-    if(mn) mn.disabled = currentPage >= totalPages;
-    document.querySelectorAll('.tile-item').forEach((t,i) =>
-      t.classList.toggle('current', i+1 === currentPage));
-  }
+  setProgress(92, 'Building flipbook…');
+  const container = document.getElementById('flipbook-container');
+  const flipEl    = document.getElementById('flipbook');
+  flipEl.innerHTML = '';
+  const containerW = isMobile ? dispW : dispW * 2;
+  flipEl.style.cssText    = `width:${containerW}px;height:${dispH}px;`;
+  container.style.cssText = `width:${containerW}px;height:${dispH}px;transform-origin:center center;`;
 
-  function goFirst() { pageFlip && pageFlip.flip(0); }
-  function goLast()  { pageFlip && pageFlip.flip(totalPages - 1); }
-  function goPrev()  { pageFlip && pageFlip.flipPrev(); }
-  function goNext()  { pageFlip && pageFlip.flipNext(); }
-
-  function goToPage(n, query) {
-    if (viewMode === 'flipbook') {
-      document.getElementById('tile-overlay').classList.remove('open');
-      document.getElementById('btn-tiles').classList.remove('active');
-      if(pageFlip) pageFlip.flip(n - 1);
-      if(query) setTimeout(() => highlightOnFlipbook(n, query), 900);
-    } else {
-      scrollToPdfPage(n);
-      if(query) setTimeout(() => highlightOnPdfView(n, query), 200);
-    }
-  }
-
-  // ── ZOOM ──
-  function toggleZoom() {
-    const p = document.getElementById('zoom-popup');
-    p.classList.toggle('open');
-    document.getElementById('btn-zoom').classList.toggle('active', p.classList.contains('open'));
-  }
-  function applyZoom() {
-    document.getElementById('flipbook-container').style.transform = `scale(${zoomLevel})`;
-    document.getElementById('zoom-label').textContent = Math.round(zoomLevel * 100) + '%';
-  }
-  function changeZoom(d) {
-    zoomLevel = Math.max(0.3, Math.min(2.5, Math.round((zoomLevel + d) * 10) / 10));
-    applyZoom();
-  }
-  function resetZoom() { zoomLevel = 1.0; applyZoom(); }
-
-  // ── FULLSCREEN ──
-  const FS_ENTER = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-  const FS_EXIT  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>`;
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
-    else document.exitFullscreen();
-  }
-  document.addEventListener('fullscreenchange', () => {
-    const isFS = !!document.fullscreenElement;
-    document.getElementById('btn-fs').innerHTML = isFS ? FS_EXIT : FS_ENTER;
+  allDataUrls.forEach((url, idx) => {
+    const div = document.createElement('div');
+    div.className = 'page';
+    div.dataset.pageNum = idx + 1;
+    div.style.cssText = `width:${dispW}px;height:${dispH}px;overflow:hidden;background:#fff;position:relative;`;
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = `width:${dispW}px;height:${dispH}px;display:block;`;
+    div.appendChild(img);
+    flipEl.appendChild(div);
   });
 
-  // ── TILE VIEW ──
-  function buildTileGrid() {
-    const grid = document.getElementById('tile-grid');
-    grid.innerHTML = '';
-    thumbUrls.forEach((url, i) => {
-      const item = document.createElement('div');
-      item.className = 'tile-item' + (i === 0 ? ' current' : '');
-      item.onclick = () => goToPage(i + 1);
-      const img = document.createElement('img');
-      img.src = url;
-      const num = document.createElement('div');
-      num.className = 'tile-page-num';
-      num.textContent = 'Page ' + (i + 1);
-      item.appendChild(img);
-      item.appendChild(num);
-      grid.appendChild(item);
-    });
+  setProgress(96, 'Initialising…');
+  pageFlip = new St.PageFlip(container, {
+    width: dispW, height: dispH, size: 'fixed',
+    showCover: true, usePortrait: isMobile,
+    mobileScrollSupport: false, flippingTime: 600, maxShadowOpacity: 0.5,
+  });
+  pageFlip.loadFromHTML(flipEl.querySelectorAll('.page'));
+  pageFlip.on('flip', e => { currentPage = e.data + 1; updateControls(); });
+
+  setProgress(100, 'Ready');
+  document.getElementById('loading').classList.add('hidden');
+  container.style.display = 'block';
+  enableControls(); updateControls(); buildTileGrid();
+}
+
+// ── Controls ────────────────────────────────────────────────────
+function setProgress(pct, msg) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('load-status').textContent  = msg;
+}
+function showError(msg) {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('error-msg').textContent = msg;
+  document.getElementById('error').classList.add('show');
+}
+function enableControls() {
+  ['btn-first','btn-prev','btn-next','btn-last','btn-zoom','btn-tiles','btn-search','btn-fs','btn-view-toggle']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+  ['mob-prev','mob-next','mob-tiles','mob-search-btn','mob-view-btn','mob-fs-btn']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+}
+function updateControls() {
+  const txt = `${currentPage} / ${totalPages}`;
+  const e1 = document.getElementById('page-indicator'), e2 = document.getElementById('mob-page');
+  if (e1) e1.textContent = txt;
+  if (e2) e2.textContent = txt;
+  document.getElementById('btn-first').disabled = currentPage <= 1;
+  document.getElementById('btn-prev').disabled  = currentPage <= 1;
+  document.getElementById('btn-next').disabled  = currentPage >= totalPages;
+  document.getElementById('btn-last').disabled  = currentPage >= totalPages;
+  const mp = document.getElementById('mob-prev'), mn = document.getElementById('mob-next');
+  if (mp) mp.disabled = currentPage <= 1;
+  if (mn) mn.disabled = currentPage >= totalPages;
+  document.querySelectorAll('.tile-item').forEach((t,i) =>
+    t.classList.toggle('current', i + 1 === currentPage));
+}
+function goFirst() { pageFlip && pageFlip.flip(0); }
+function goLast()  { pageFlip && pageFlip.flip(totalPages - 1); }
+function goPrev()  { pageFlip && pageFlip.flipPrev(); }
+function goNext()  { pageFlip && pageFlip.flipNext(); }
+function goToPage(n, query) {
+  if (viewMode === 'flipbook') {
+    document.getElementById('tile-overlay').classList.remove('open');
+    document.getElementById('btn-tiles').classList.remove('active');
+    if (pageFlip) pageFlip.flip(n - 1);
+    if (query) setTimeout(() => highlightFlipbook(n, query), 900);
+  } else {
+    scrollToPdfPage(n);
+    if (query) setTimeout(() => highlightPdfView(n, query), 150);
   }
-  function toggleTiles() {
-    const o = document.getElementById('tile-overlay');
-    o.classList.toggle('open');
-    document.getElementById('btn-tiles').classList.toggle('active', o.classList.contains('open'));
-    document.getElementById('mob-tiles').classList.toggle('active', o.classList.contains('open'));
-    if (o.classList.contains('open')) {
-      const cur = o.querySelector('.current');
-      if (cur) cur.scrollIntoView({ block: 'center' });
-    }
+}
+
+// ── Zoom ────────────────────────────────────────────────────────
+function toggleZoom() {
+  const p = document.getElementById('zoom-popup');
+  p.classList.toggle('open');
+  document.getElementById('btn-zoom').classList.toggle('active', p.classList.contains('open'));
+}
+function applyZoom() {
+  document.getElementById('flipbook-container').style.transform = `scale(${zoomLevel})`;
+  document.getElementById('zoom-label').textContent = Math.round(zoomLevel * 100) + '%';
+}
+function changeZoom(d) {
+  zoomLevel = Math.max(0.3, Math.min(2.5, Math.round((zoomLevel + d) * 10) / 10));
+  applyZoom();
+}
+function resetZoom() { zoomLevel = 1.0; applyZoom(); }
+
+// ── Fullscreen ──────────────────────────────────────────────────
+const FS_ENTER = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+const FS_EXIT  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>`;
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+document.addEventListener('fullscreenchange', () => {
+  const isFS = !!document.fullscreenElement;
+  document.getElementById('btn-fs').innerHTML = isFS ? FS_EXIT : FS_ENTER;
+});
+
+// ── Tiles ───────────────────────────────────────────────────────
+function buildTileGrid() {
+  const grid = document.getElementById('tile-grid');
+  grid.innerHTML = '';
+  thumbUrls.forEach((url, i) => {
+    const item = document.createElement('div');
+    item.className = 'tile-item' + (i === 0 ? ' current' : '');
+    item.onclick = () => goToPage(i + 1);
+    const img = document.createElement('img'); img.src = url;
+    const num = document.createElement('div');
+    num.className = 'tile-page-num'; num.textContent = 'Page ' + (i + 1);
+    item.appendChild(img); item.appendChild(num);
+    grid.appendChild(item);
+  });
+}
+function toggleTiles() {
+  const o = document.getElementById('tile-overlay');
+  o.classList.toggle('open');
+  document.getElementById('btn-tiles').classList.toggle('active', o.classList.contains('open'));
+  document.getElementById('mob-tiles').classList.toggle('active', o.classList.contains('open'));
+  if (o.classList.contains('open')) {
+    const cur = o.querySelector('.current'); if (cur) cur.scrollIntoView({ block: 'center' });
   }
+}
 
-  // ── VIEW MODE ──
-  async function toggleViewMode() {
-    if (viewMode === 'flipbook') {
-      viewMode = 'pdf';
-      document.getElementById('stage').style.display = 'none';
-      const pdfViewEl = document.getElementById('pdf-view');
-      pdfViewEl.classList.add('active');
+// ── View mode toggle ────────────────────────────────────────────
+async function toggleViewMode() {
+  if (viewMode === 'flipbook') {
+    viewMode = 'pdf';
+    document.getElementById('stage').style.display = 'none';
+    const pdfViewEl = document.getElementById('pdf-view');
+    pdfViewEl.classList.add('active');
 
-      if (!pdfViewBuilt && pdfDocRef) {
-        pdfViewEl.innerHTML = '';
-        pdfPageWraps = [];
-
-        // ── FIX: calculate a scale that fits the PDF page within the visible
-        //    container width on all devices, falling back to PDF_VIEW_SCALE
-        //    on larger screens.
-        const containerW = pdfViewEl.clientWidth || window.innerWidth;
-        // Use padding:1rem each side = 32px total
-        const availableW = containerW - 32;
-
-        // Measure first page at scale=1 to get natural width
-        const firstPage = await pdfDocRef.getPage(1);
-        const vp1 = firstPage.getViewport({ scale: 1 });
-        const naturalW = vp1.width;
-
-        // Scale so rendered canvas fits availableW, but cap at PDF_VIEW_SCALE
-        const fitScale = availableW / naturalW;
-        const renderScale = Math.min(fitScale, PDF_VIEW_SCALE);
-
-        for (let i = 1; i <= totalPages; i++) {
-          setProgress(Math.round((i/totalPages)*100), `Building PDF view page ${i}…`);
-          document.getElementById('loading').classList.remove('hidden');
-
-          const wrap = document.createElement('div');
-          wrap.className = 'pdf-page-wrap';
-          wrap.dataset.pageNum = i;
-
-          const { canvas, page, viewport } = await renderToCanvas(pdfDocRef, i, renderScale);
-
-          // The wrap must be sized to the viewport CSS dimensions so that absolutely-
-          // positioned children (textLayer, link-overlay) sit exactly over the canvas.
-          // canvas.width/height are in device pixels; viewport.width/height are in CSS px.
-          wrap.style.width  = viewport.width  + 'px';
-          wrap.style.height = viewport.height + 'px';
-          wrap.appendChild(canvas);
-
-          // Text layer first, then link overlays on top (DOM order = z-order)
-          const textLayer = await buildTextLayer(page, viewport, wrap, canvas);
-          await buildLinkOverlays(page, viewport, wrap);
-
-          pdfViewEl.appendChild(wrap);
-          pdfPageWraps[i] = { wrap, canvas, textLayer };
-        }
-        pdfViewBuilt = true;
-        document.getElementById('loading').classList.add('hidden');
+    if (!pdfViewBuilt && pdfDocRef) {
+      pdfViewEl.innerHTML = ''; pdfPageWraps = [];
+      document.getElementById('loading').classList.remove('hidden');
+      for (let i = 1; i <= totalPages; i++) {
+        setProgress(Math.round((i / totalPages) * 100), `Building page ${i} of ${totalPages}…`);
+        const pw = await buildPageWrap(pdfDocRef, i);
+        pdfViewEl.appendChild(pw.el);
+        pdfPageWraps[i] = pw;
       }
-
-      const vtLabel = 'Flipbook';
-      document.getElementById('btn-view-toggle').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> ${vtLabel}`;
-      const mvl = document.getElementById('mob-view-label');
-      if(mvl) mvl.textContent = vtLabel;
-      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id =>
-        document.getElementById(id).disabled = true);
-
-    } else {
-      viewMode = 'flipbook';
-      document.getElementById('pdf-view').classList.remove('active');
-      document.getElementById('stage').style.display = '';
-      const vtLabel = 'PDF View';
-      document.getElementById('btn-view-toggle').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ${vtLabel}`;
-      const mvl = document.getElementById('mob-view-label');
-      if(mvl) mvl.textContent = vtLabel;
-      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id =>
-        document.getElementById(id).disabled = false);
-      updateControls();
+      pdfViewBuilt = true;
+      document.getElementById('loading').classList.add('hidden');
     }
-  }
-
-  // ── BUILD TEXT LAYER (for PDF view) ──
-  // PDF.js renderTextLayer positions spans in viewport CSS units (NOT canvas pixels).
-  // The textLayer div must therefore be the same size as the viewport, not the canvas.
-  // We then CSS-scale the whole .pdf-page-wrap so it fits the screen — both the canvas
-  // (via max-width:100%/height:auto) and the absolutely-positioned textLayer scale together.
-  async function buildTextLayer(page, viewport, container, canvas) {
-    const content = await page.getTextContent();
-
-    const tl = document.createElement('div');
-    tl.className = 'textLayer';
-    // Size MUST match viewport dimensions (CSS units), not canvas pixel dimensions.
-    // canvas.width = viewport.width * devicePixelRatio-ish, but viewport.width is the CSS size.
-    tl.style.width  = viewport.width  + 'px';
-    tl.style.height = viewport.height + 'px';
-    // Scale the text layer to overlay the canvas (which may be larger due to RENDER_SCALE)
-    // canvas is rendered at renderScale; viewport is at renderScale too, so they match 1:1 in CSS.
-    container.appendChild(tl);
-
-    await pdfjsLib.renderTextLayer({
-      textContentSource: content,
-      container: tl,
-      viewport: viewport,
-      textDivs: [],
-    }).promise;
-
-    return tl;
-  }
-
-  // ── BUILD LINK OVERLAYS (for PDF view) ──
-  // Coordinates must be in the same CSS-unit space as the textLayer (= viewport units).
-  // DO NOT multiply by canvas pixel ratios here — the viewport IS the CSS layout size.
-  // Overlays are appended after buildTextLayer so they sit above spans in DOM/z order.
-  async function buildLinkOverlays(page, viewport, container) {
-    try {
-      const annotations = await page.getAnnotations();
-
-      annotations.forEach(ann => {
-        if (ann.subtype !== 'Link') return;
-
-        const hasUrl  = ann.url && ann.url.trim() !== '';
-        const hasDest = ann.dest != null || (ann.action && ann.action.dest != null);
-        if (!hasUrl && !hasDest) return;
-
-        // PDF rect is in user-space; viewport.convertToViewportRectangle maps it
-        // to the same coordinate system that renderTextLayer uses — i.e. CSS px units.
-        const [x1, y1, x2, y2] = viewport.convertToViewportRectangle(ann.rect);
-        // After conversion x1<x2 and y1<y2 are guaranteed? Not always — normalise:
-        const left   = Math.min(x1, x2);
-        const top    = Math.min(y1, y2);
-        const width  = Math.abs(x2 - x1);
-        const height = Math.abs(y2 - y1);
-
-        const a = document.createElement('a');
-        a.className = 'link-overlay';
-        a.style.cssText = `left:${left.toFixed(1)}px;top:${top.toFixed(1)}px;width:${width.toFixed(1)}px;height:${height.toFixed(1)}px;`;
-
-        if (hasUrl) {
-          a.href   = ann.url;
-          a.target = '_blank';
-          a.rel    = 'noopener noreferrer';
-          a.title  = ann.url;
-        } else {
-          a.href = '#';
-          const dest = ann.dest || (ann.action && ann.action.dest);
-          a.addEventListener('click', async e => {
-            e.preventDefault();
-            try {
-              let destArray = dest;
-              if (typeof dest === 'string') {
-                destArray = await pdfDocRef.getDestination(dest);
-              }
-              if (destArray && destArray[0]) {
-                const ref       = destArray[0];
-                const pageIndex = await pdfDocRef.getPageIndex(ref);
-                scrollToPdfPage(pageIndex + 1);
-              }
-            } catch(err) { console.warn('Dest nav error:', err); }
-          });
-        }
-
-        // Append AFTER text layer so z-index stacking and DOM order both favour links
-        container.appendChild(a);
-      });
-    } catch(e) { console.warn('Link overlay error:', e); }
-  }
-
-  // ── PDF VIEW: scroll to page ──
-  function scrollToPdfPage(n) {
-    if (!pdfPageWraps[n]) return;
-    pdfPageWraps[n].wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    currentPage = n;
+    const lbl = 'Flipbook';
+    document.getElementById('btn-view-toggle').innerHTML =
+      `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> ${lbl}`;
+    const mvl = document.getElementById('mob-view-label'); if (mvl) mvl.textContent = lbl;
+    ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id =>
+      document.getElementById(id).disabled = true);
+  } else {
+    viewMode = 'flipbook';
+    document.getElementById('pdf-view').classList.remove('active');
+    document.getElementById('stage').style.display = '';
+    const lbl = 'PDF View';
+    document.getElementById('btn-view-toggle').innerHTML =
+      `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ${lbl}`;
+    const mvl = document.getElementById('mob-view-label'); if (mvl) mvl.textContent = lbl;
+    ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id =>
+      document.getElementById(id).disabled = false);
     updateControls();
   }
+}
 
-  // ── SEARCH ──
-  function toggleSearch() {
-    const s = document.getElementById('search-sidebar');
-    s.classList.toggle('open');
-    document.getElementById('btn-search').classList.toggle('active', s.classList.contains('open'));
-    document.getElementById('mob-search-btn').classList.toggle('active', s.classList.contains('open'));
-    if (s.classList.contains('open')) setTimeout(() => document.getElementById('search-input').focus(), 210);
-  }
+// ── Build one PDF page wrap ─────────────────────────────────────
+/*
+  Design:
+  - Render canvas at RENDER_SCALE (same scale as flipbook = full quality).
+  - Wrap is sized to canvas.width × canvas.height in CSS px.
+    CSS max-width on the wrap caps it at (100vw - 2rem); browser scales
+    proportionally so canvas + text layer + links all shrink together.
+  - Text spans: positioned using the PDF item transform, scaled to canvas px.
+    Use item.transform [a,b,c,d,e,f]:
+      canvasX = e * RENDER_SCALE
+      canvasY = canvasH - (f * RENDER_SCALE) - (fontSize * RENDER_SCALE)
+    These are absolute canvas-pixel values. Because canvas fills wrap at
+    width:100%/height:auto, any CSS scaling is uniform, so percentage values
+    would also work — but absolute px is simpler and correct here.
+  - Link rects: use viewport.convertToViewportRectangle() to convert PDF
+    annotation rect from user-space → canvas pixel space. Expressed as % of
+    wrap so they always sit over the correct spot after CSS scaling.
+*/
+async function buildPageWrap(pdfDoc, pageNum) {
+  const { canvas, page, viewport } = await renderPage(pdfDoc, pageNum, RENDER_SCALE);
+  const W = canvas.width;
+  const H = canvas.height;
 
-  async function doSearch() {
-    const query = document.getElementById('search-input').value.trim();
-    if (!query) return;
-    const statusEl  = document.getElementById('search-status');
-    const resultsEl = document.getElementById('search-results');
-    resultsEl.innerHTML = '';
-    statusEl.textContent = 'Searching…';
+  const wrap = document.createElement('div');
+  wrap.className = 'pdf-page-wrap';
+  wrap.dataset.pageNum = pageNum;
+  wrap.style.width  = W + 'px';
+  wrap.style.height = H + 'px';
+  wrap.appendChild(canvas);
 
-    const pageNum = parseInt(query);
-    if (!isNaN(pageNum) && String(pageNum) === query && pageNum >= 1 && pageNum <= totalPages) {
-      statusEl.textContent = `Jumping to page ${pageNum}`;
-      goToPage(pageNum);
-      return;
-    }
-    if (!pdfDocRef) { statusEl.textContent = 'PDF not ready.'; return; }
+  // ── Text layer ──────────────────────────────────────────────
+  const content = await page.getTextContent();
+  const tl = document.createElement('div');
+  tl.className = 'pdf-text-layer';
 
-    const matches = [];
-    const q = query.toLowerCase();
-    for (let i = 1; i <= totalPages; i++) {
-      try {
-        const page    = await pdfDocRef.getPage(i);
-        const content = await page.getTextContent();
-        const text    = content.items.map(it => it.str).join(' ');
-        if (text.toLowerCase().includes(q)) {
-          const idx     = text.toLowerCase().indexOf(q);
-          const snippet = text.substring(Math.max(0, idx - 40), idx + 80);
-          matches.push({ page: i, snippet });
-        }
-      } catch(e) { /* skip */ }
-    }
+  content.items.forEach(item => {
+    if (!item.str || !item.str.trim()) return;
+    const [a, b, , , e, f] = item.transform;
+    const fontSize = Math.sqrt(a * a + b * b); // user-space units
+    if (fontSize < 0.5) return;
 
-    if (!matches.length) { statusEl.textContent = `No results for "${query}"`; return; }
-    statusEl.textContent = `${matches.length} page${matches.length > 1 ? 's' : ''} found`;
+    // Scale to canvas pixels
+    const cx = e  * RENDER_SCALE;
+    const cy = H - (f * RENDER_SCALE) - (fontSize * RENDER_SCALE);
+    const cw = Math.abs(item.width) * RENDER_SCALE;
+    const ch = fontSize * RENDER_SCALE * 1.2;
 
-    const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    matches.forEach(m => {
-      const item = document.createElement('div');
-      item.className = 'sr-item';
-      const highlighted = m.snippet.replace(re, s => `<mark>${s}</mark>`);
-      item.onclick = () => {
-        document.querySelectorAll('.sr-item').forEach(el => el.classList.remove('active-result'));
-        item.classList.add('active-result');
-        goToPage(m.page, query);
-      };
-      item.innerHTML = `
-        <img class="sr-thumb" src="${thumbUrls[m.page - 1] || ''}" alt="Page ${m.page}"/>
-        <div class="sr-info">
-          <div class="sr-page">Page ${m.page}</div>
-          <div class="sr-match">…${highlighted}…</div>
-        </div>`;
-      resultsEl.appendChild(item);
+    // scaleX compresses/stretches text to match actual glyph widths
+    const naturalW = fontSize * RENDER_SCALE * item.str.length;
+    const scaleX   = naturalW > 0 ? (cw / naturalW) : 1;
+
+    const span = document.createElement('span');
+    span.textContent = item.str;
+    span.style.cssText = `left:${cx.toFixed(1)}px;top:${cy.toFixed(1)}px;` +
+      `font-size:${(fontSize * RENDER_SCALE).toFixed(1)}px;` +
+      `width:${(cw || ch).toFixed(1)}px;` +
+      `transform:scaleX(${scaleX.toFixed(4)});`;
+    tl.appendChild(span);
+  });
+  wrap.appendChild(tl);
+
+  // ── Link overlays ────────────────────────────────────────────
+  // viewport.convertToViewportRectangle maps [x1,y1,x2,y2] from PDF user-space
+  // to the canvas coordinate system (pixels, Y flipped). Express as % of wrap
+  // so the overlay stays aligned when CSS scales the wrap for mobile.
+  try {
+    const anns = await page.getAnnotations();
+    anns.forEach(ann => {
+      if (ann.subtype !== 'Link') return;
+      const hasUrl  = ann.url && ann.url.trim();
+      const hasDest = ann.dest != null;
+      const hasAct  = ann.action != null;
+      if (!hasUrl && !hasDest && !hasAct) return;
+
+      // Convert annotation rect to canvas pixels
+      const vr = viewport.convertToViewportRectangle(ann.rect);
+      const x1 = Math.min(vr[0], vr[2]), y1 = Math.min(vr[1], vr[3]);
+      const x2 = Math.max(vr[0], vr[2]), y2 = Math.max(vr[1], vr[3]);
+
+      const a = document.createElement('a');
+      a.className = 'pdf-link';
+      // Use % so the overlay scales with the CSS-scaled wrap
+      a.style.left   = ((x1 / W) * 100).toFixed(3) + '%';
+      a.style.top    = ((y1 / H) * 100).toFixed(3) + '%';
+      a.style.width  = (((x2 - x1) / W) * 100).toFixed(3) + '%';
+      a.style.height = (((y2 - y1) / H) * 100).toFixed(3) + '%';
+
+      if (hasUrl) {
+        a.href = ann.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = ann.url;
+      } else {
+        a.href = '#';
+        const dest = ann.dest || (ann.action && ann.action.dest);
+        a.addEventListener('click', async ev => {
+          ev.preventDefault();
+          if (!dest) return;
+          try {
+            const arr = typeof dest === 'string' ? await pdfDocRef.getDestination(dest) : dest;
+            if (arr && arr[0]) scrollToPdfPage((await pdfDocRef.getPageIndex(arr[0])) + 1);
+          } catch(err) { console.warn('Internal link:', err); }
+        });
+      }
+      wrap.appendChild(a);  // after tl — sits on top in DOM stacking
     });
-  }
+  } catch(e) { /* annotations optional */ }
 
-  // ── HIGHLIGHT on flipbook page ──
-  // FIX: use PDF.js getTextContent with the correct scale factor.
-  // The flipbook pages are rendered at RENDER_SCALE, then displayed at dispW/dispH.
-  // We must map from PDF user-space → rendered canvas pixels → displayed pixels.
-  async function highlightOnFlipbook(pageNum, query) {
-    if (!pdfDocRef || !query) return;
-    document.querySelectorAll('#flipbook .hl-box').forEach(el => el.remove());
+  return { el: wrap, tl };
+}
+
+// ── PDF view scroll ─────────────────────────────────────────────
+function scrollToPdfPage(n) {
+  if (!pdfPageWraps[n]) return;
+  pdfPageWraps[n].el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  currentPage = n; updateControls();
+}
+
+// ── Search ──────────────────────────────────────────────────────
+function toggleSearch() {
+  const s = document.getElementById('search-sidebar');
+  s.classList.toggle('open');
+  document.getElementById('btn-search').classList.toggle('active', s.classList.contains('open'));
+  document.getElementById('mob-search-btn').classList.toggle('active', s.classList.contains('open'));
+  if (s.classList.contains('open'))
+    setTimeout(() => document.getElementById('search-input').focus(), 210);
+}
+
+async function doSearch() {
+  const query = document.getElementById('search-input').value.trim();
+  if (!query) return;
+  const statusEl = document.getElementById('search-status');
+  const resultsEl = document.getElementById('search-results');
+  resultsEl.innerHTML = ''; statusEl.textContent = 'Searching…';
+
+  const pageNum = parseInt(query, 10);
+  if (!isNaN(pageNum) && String(pageNum) === query && pageNum >= 1 && pageNum <= totalPages) {
+    statusEl.textContent = `Jumping to page ${pageNum}`; goToPage(pageNum); return;
+  }
+  if (!pdfDocRef) { statusEl.textContent = 'PDF not ready.'; return; }
+
+  const matches = [];
+  const q = query.toLowerCase();
+  for (let i = 1; i <= totalPages; i++) {
     try {
-      const page    = await pdfDocRef.getPage(pageNum);
+      const page = await pdfDocRef.getPage(i);
       const content = await page.getTextContent();
-
-      // PDF user space viewport (scale=1)
-      const vp1 = page.getViewport({ scale: 1 });
-
-      const q = query.toLowerCase();
-      const pageDiv = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
-      if (!pageDiv) return;
-
-      // Ratio: from PDF user-space units → displayed flipbook pixels
-      // Canvas was rendered at RENDER_SCALE, then the img is shown at dispW × dispH
-      // So final pixel = pdfUnit * RENDER_SCALE * (dispW / canvasWidth)
-      //                = pdfUnit * RENDER_SCALE * (dispW / (vp1.width * RENDER_SCALE))
-      //                = pdfUnit * (dispW / vp1.width)
-      const rx = dispW / vp1.width;
-      const ry = dispH / vp1.height;
-
-      let count = 0;
-      content.items.forEach(item => {
-        if (!item.str.toLowerCase().includes(q) || count >= 20) return;
-
-        // PDF transform matrix: [scaleX, skewY, skewX, scaleY, tx, ty]
-        // tx, ty are the glyph origin in PDF user space (Y axis up from bottom)
-        const t        = item.transform;
-        const tx       = t[4];
-        const ty       = t[5];
-        const fontSize = Math.sqrt(t[0]*t[0] + t[1]*t[1]); // actual rendered font size
-        const itemW    = Math.abs(item.width);
-
-        // Convert PDF bottom-left origin → CSS top-left origin
-        // cssX: x position stays the same
-        // cssY: PDF y is from bottom, CSS y is from top
-        //       top of glyph in PDF = ty + ascent ≈ ty (baseline); subtract from page height
-        const cssX = tx * rx;
-        const cssY = (vp1.height - ty - fontSize) * ry;
-        const cssW = itemW * rx;
-        const cssH = fontSize * ry * 1.3;  // slight extra height for descenders
-
-        // Clamp to page bounds to avoid stray boxes
-        if (cssX < -5 || cssY < -5 || cssX > dispW + 5 || cssY > dispH + 5) return;
-
-        const box = document.createElement('div');
-        box.className = 'hl-box';
-        box.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${Math.max(cssW,4).toFixed(1)}px;height:${Math.max(cssH,8).toFixed(1)}px;`;
-        pageDiv.appendChild(box);
-        count++;
-      });
-    } catch(e) { console.warn('Flipbook HL error:', e); }
-  }
-
-  // ── HIGHLIGHT on PDF view page ──
-  // FIX: PDF.js renderTextLayer already positions spans correctly.
-  // We just add/remove the .highlight class on matching spans.
-  async function highlightOnPdfView(pageNum, query) {
-    if (!pdfDocRef || !query || !pdfPageWraps[pageNum]) return;
-    const { wrap } = pdfPageWraps[pageNum];
-
-    // Clear previous highlights across all pages
-    document.querySelectorAll('.textLayer span.highlight').forEach(el => el.classList.remove('highlight'));
-
-    if (!query) return;
-    const q = query.toLowerCase();
-    let count = 0;
-    wrap.querySelectorAll('.textLayer span').forEach(span => {
-      if (span.textContent.toLowerCase().includes(q) && count < 20) {
-        span.classList.add('highlight');
-        count++;
+      const text = content.items.map(it => it.str).join(' ');
+      if (text.toLowerCase().includes(q)) {
+        const idx = text.toLowerCase().indexOf(q);
+        matches.push({ page: i, snippet: text.substring(Math.max(0, idx - 40), idx + 80) });
       }
+    } catch(e) { /* skip */ }
+  }
+
+  if (!matches.length) { statusEl.textContent = `No results for "${query}"`; return; }
+  statusEl.textContent = `${matches.length} page${matches.length > 1 ? 's' : ''} found`;
+
+  const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  matches.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'sr-item';
+    item.onclick = () => {
+      document.querySelectorAll('.sr-item').forEach(el => el.classList.remove('active-result'));
+      item.classList.add('active-result'); goToPage(m.page, query);
+    };
+    item.innerHTML = `
+      <img class="sr-thumb" src="${thumbUrls[m.page-1]||''}" alt="Page ${m.page}"/>
+      <div class="sr-info">
+        <div class="sr-page">Page ${m.page}</div>
+        <div class="sr-match">…${m.snippet.replace(re, s => `<mark>${s}</mark>`)}…</div>
+      </div>`;
+    resultsEl.appendChild(item);
+  });
+}
+
+// ── Highlight: flipbook ─────────────────────────────────────────
+/*
+  Flipbook images are rendered at RENDER_SCALE then CSS-shrunk to dispW×dispH.
+  To overlay a highlight box we need coordinates in display pixels.
+
+  PDF text item transform [a,b,c,d,e,f] gives:
+    e, f = glyph origin (baseline) in PDF user-space, Y from bottom
+    fontSize (user-space) = sqrt(a²+b²)
+
+  Steps:
+    1. Get user-space viewport (scale=1): vp1.width, vp1.height
+    2. Compute display-pixel ratios:
+         rx = dispW / vp1.width
+         ry = dispH / vp1.height
+    3. left = e * rx
+       top  = (vp1.height - f - fontSize) * ry   ← Y-flip + shift up by font height
+*/
+async function highlightFlipbook(pageNum, query) {
+  if (!pdfDocRef || !query) return;
+  document.querySelectorAll('#flipbook .hl-box').forEach(el => el.remove());
+  try {
+    const page    = await pdfDocRef.getPage(pageNum);
+    const content = await page.getTextContent();
+    const vp1     = page.getViewport({ scale: 1 });
+    const q       = query.toLowerCase();
+    const pageDiv = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
+    if (!pageDiv) return;
+
+    const rx = dispW / vp1.width;
+    const ry = dispH / vp1.height;
+    let count = 0;
+
+    content.items.forEach(item => {
+      if (count >= 20 || !item.str.toLowerCase().includes(q)) return;
+      const [a, b, , , e, f] = item.transform;
+      const fontSize = Math.sqrt(a * a + b * b);   // user-space units
+      if (fontSize < 0.5) return;
+
+      const left   = e * rx;
+      const top    = (vp1.height - f - fontSize) * ry;
+      const width  = Math.abs(item.width) * rx || fontSize * rx * item.str.length * 0.6;
+      const height = fontSize * ry * 1.2;
+
+      // Skip if outside page bounds
+      if (left + width < 0 || top + height < 0 || left > dispW || top > dispH) return;
+
+      const box = document.createElement('div');
+      box.className = 'hl-box';
+      box.style.left   = Math.max(0, left).toFixed(1)   + 'px';
+      box.style.top    = Math.max(0, top).toFixed(1)    + 'px';
+      box.style.width  = Math.max(4, width).toFixed(1)  + 'px';
+      box.style.height = Math.max(6, height).toFixed(1) + 'px';
+      pageDiv.appendChild(box);
+      count++;
     });
+  } catch(e) { console.warn('Flipbook highlight:', e); }
+}
 
-    // Scroll first highlighted span into view
-    const first = wrap.querySelector('.textLayer span.highlight');
-    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  // ── KEYBOARD ──
-  document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT') return;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { if(viewMode==='flipbook') goNext(); }
-    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { if(viewMode==='flipbook') goPrev(); }
-    if (e.key === 'f' || e.key === 'F') toggleFullscreen();
-    if (e.key === '+' || e.key === '=') changeZoom(0.15);
-    if (e.key === '-') changeZoom(-0.15);
-    if (e.key === '0') resetZoom();
-    if (e.key === 'Escape') {
-      document.getElementById('tile-overlay').classList.remove('open');
-      document.getElementById('zoom-popup').classList.remove('open');
-      if (document.fullscreenElement) document.exitFullscreen();
+// ── Highlight: PDF view ─────────────────────────────────────────
+/*
+  Text spans in the PDF view are positioned at canvas-pixel coordinates
+  matching the PDF text item positions. To highlight we just add class .hl.
+*/
+function highlightPdfView(pageNum, query) {
+  if (!query || !pdfPageWraps[pageNum]) return;
+  document.querySelectorAll('.pdf-text-layer span.hl').forEach(el => el.classList.remove('hl'));
+  const q = query.toLowerCase();
+  const tl = pdfPageWraps[pageNum].tl;
+  if (!tl) return;
+  let count = 0;
+  tl.querySelectorAll('span').forEach(span => {
+    if (count < 20 && span.textContent.toLowerCase().includes(q)) {
+      span.classList.add('hl'); count++;
     }
   });
-  document.addEventListener('click', e => {
-    if (!e.target.closest('#zoom-popup') && !e.target.closest('#btn-zoom'))
-      document.getElementById('zoom-popup').classList.remove('open');
-  });
+  const first = tl.querySelector('span.hl');
+  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
-  // ── BOOT ──
-  async function boot() {
-    if (!pdfFile) { showError('No PDF file specified.'); return; }
-    try {
-      setProgress(2, 'Fetching document…');
-      const url = new URL(pdfFile, window.location.href).href;
-      const pdfDoc = await pdfjsLib.getDocument({
-        url, withCredentials: false,
-        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-        cMapPacked: true,
-      }).promise;
-      pdfDocRef = pdfDoc;
-      await loadFlipbook(pdfDoc);
-    } catch(e) {
-      console.error('BOOT ERROR:', e);
-      showError(`Could not load "${pdfFile}". Make sure the file exists in the pdfs/ folder.`);
-    }
+// ── Keyboard ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { if (viewMode === 'flipbook') goNext(); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { if (viewMode === 'flipbook') goPrev(); }
+  if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  if (e.key === '+' || e.key === '=') changeZoom(0.15);
+  if (e.key === '-') changeZoom(-0.15);
+  if (e.key === '0') resetZoom();
+  if (e.key === 'Escape') {
+    document.getElementById('tile-overlay').classList.remove('open');
+    document.getElementById('zoom-popup').classList.remove('open');
+    if (document.fullscreenElement) document.exitFullscreen();
   }
-  boot();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#zoom-popup') && !e.target.closest('#btn-zoom'))
+    document.getElementById('zoom-popup').classList.remove('open');
+});
+
+// ── Boot ────────────────────────────────────────────────────────
+async function boot() {
+  if (!pdfFile) { showError('No PDF file specified.'); return; }
+  try {
+    setProgress(2, 'Fetching document…');
+    const url = new URL(pdfFile, window.location.href).href;
+    const pdfDoc = await pdfjsLib.getDocument({
+      url, withCredentials: false,
+      cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+      cMapPacked: true,
+    }).promise;
+    pdfDocRef = pdfDoc;
+    await loadFlipbook(pdfDoc);
+  } catch(e) {
+    console.error('BOOT ERROR:', e);
+    showError(`Could not load "${pdfFile}". Make sure the file exists in the pdfs/ folder.`);
+  }
+}
+boot();
 </script>
 </body>
 </html>
