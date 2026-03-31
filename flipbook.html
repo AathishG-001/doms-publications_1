@@ -88,7 +88,7 @@
     .sr-info { flex: 1; min-width: 0; }
     .sr-page { font-size: 0.7rem; color: #777; margin-bottom: 2px; }
     .sr-match { font-size: 0.75rem; color: #bbb; line-height: 1.5; word-break: break-word; }
-    .sr-match mark { background: rgba(255,220,0,0.35); color: #ffe066; border-radius: 2px; padding: 0 1px; }
+    .sr-match mark { background: rgba(180,30,30,0.5); color: #ff9999; border-radius: 2px; padding: 0 1px; }
 
     /* ── ZOOM POPUP ── */
     .zoom-popup {
@@ -147,11 +147,12 @@
 
     /* ── HIGHLIGHT OVERLAY on page divs ── */
     .hl-box {
-      position: absolute; background: rgba(255,220,0,0.4);
+      position: absolute; background: rgba(255,200,0,0.55);
       pointer-events: none; border-radius: 2px; z-index: 5;
-      animation: hl-fade 4s forwards;
+      box-shadow: 0 0 0 1px rgba(200,150,0,0.4);
+      animation: hl-fade 5s forwards;
     }
-    @keyframes hl-fade { 0%,70%{opacity:1} 100%{opacity:0} }
+    @keyframes hl-fade { 0%,80%{opacity:1} 100%{opacity:0} }
 
     /* ── MOBILE ── */
     .mobile-reader { display: none; flex: 1; overflow-y: auto; flex-direction: column; align-items: center; gap: 8px; padding: 1rem; }
@@ -163,6 +164,26 @@
 
     /* ── FULLSCREEN adjustment ── */
     :fullscreen .toolbar, :-webkit-full-screen .toolbar { z-index: 100; }
+
+    /* ── PDF VIEW ── */
+    .pdf-view {
+      display: none; flex: 1; overflow-y: auto;
+      flex-direction: column; align-items: center;
+      gap: 12px; padding: 1.5rem 1rem; background: #2a2a2a;
+    }
+    .pdf-view.active { display: flex; }
+    .pdf-view canvas { box-shadow: 0 4px 24px rgba(0,0,0,0.5); display: block; }
+
+    /* View toggle button — slightly wider than icon-only */
+    .tb-view-toggle {
+      background: #2e2e2e; border: 1px solid #3a3a3a; color: #ccc;
+      border-radius: 4px; cursor: pointer; display: flex; align-items: center;
+      gap: 5px; padding: 0 10px; height: 30px; font-size: 0.72rem;
+      font-family: var(--sans); white-space: nowrap; transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .tb-view-toggle:hover { background: #3a3a3a; color: #fff; }
+    .tb-view-toggle:disabled { opacity: 0.3; cursor: default; }
   </style>
 </head>
 <body>
@@ -202,6 +223,13 @@
   <button class="tb-btn" id="btn-fs" title="Fullscreen" onclick="toggleFullscreen()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
   </button>
+  <div class="tb-sep"></div>
+
+  <button class="tb-view-toggle" id="btn-view-toggle" disabled onclick="toggleViewMode()" title="Switch between flipbook and PDF view">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    PDF View
+  </button>
+
   <div class="tb-sep"></div>
 
   <a class="tb-download" id="dl-btn" href="#" download>
@@ -260,6 +288,9 @@
       <div id="flipbook"></div>
     </div>
   </div>
+
+  <!-- Standard PDF view (scroll through all pages) -->
+  <div class="pdf-view" id="pdf-view"></div>
 
 </div>
 
@@ -365,9 +396,10 @@
     flipEl.innerHTML = '';
     flipEl.style.cssText = `width:${dispW * 2}px;height:${dispH}px;`;
 
-    allDataUrls.forEach(url => {
+    allDataUrls.forEach((url, idx) => {
       const div = document.createElement('div');
       div.className = 'page';
+      div.dataset.pageNum = idx + 1;  // tag each page div with its number
       div.style.cssText = `width:${dispW}px;height:${dispH}px;overflow:hidden;background:#fff;position:relative;`;
       const img = document.createElement('img');
       img.src = url;
@@ -399,7 +431,7 @@
 
   // ── CONTROLS ──
   function enableControls() {
-    ['btn-first','btn-prev','btn-next','btn-last','btn-zoom','btn-tiles','btn-search','btn-fs']
+    ['btn-first','btn-prev','btn-next','btn-last','btn-zoom','btn-tiles','btn-search','btn-fs','btn-view-toggle']
       .forEach(id => { document.getElementById(id).disabled = false; });
   }
 
@@ -574,11 +606,10 @@
   }
 
   // ── WORD HIGHLIGHT on page ──
-  // Draws highlight boxes over matched text directly on the page div
   async function drawHighlights(pageNum, query) {
     if (!pdfDocRef || !query) return;
 
-    // Remove old highlights
+    // Remove all existing highlights
     document.querySelectorAll('.hl-box').forEach(el => el.remove());
 
     try {
@@ -587,36 +618,44 @@
       const viewport = page.getViewport({ scale: RENDER_SCALE });
       const q        = query.toLowerCase();
 
-      // Scale from full-render space to display space
+      // Find the page div by its data-page-num attribute (reliable after StPageFlip reorders DOM)
+      const pageDiv = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
+      if (!pageDiv) {
+        console.warn('Highlight: could not find page div for page', pageNum);
+        return;
+      }
+
+      // Scale: PDF viewport (at RENDER_SCALE) → display pixels
       const scaleX = dispW / viewport.width;
       const scaleY = dispH / viewport.height;
 
-      const pages  = document.querySelectorAll('#flipbook .page');
-      const pageDiv = pages[pageNum - 1];
-      if (!pageDiv) return;
-
+      let count = 0;
       content.items.forEach(item => {
         if (!item.str.toLowerCase().includes(q)) return;
+        if (count >= 12) return; // cap at 12 highlights per page
 
-        // PDF.js transform: [sx, 0, 0, sy, tx, ty] — origin bottom-left
-        const tx   = item.transform[4];
-        const ty   = item.transform[5];
-        const itemH = item.height  || 10;
-        const itemW = item.width   || 50;
+        const tx    = item.transform[4];
+        const ty    = item.transform[5];
+        const itemH = Math.abs(item.height || 10);
+        const itemW = Math.abs(item.width  || 50);
 
-        // Convert to top-left CSS coordinates
+        // PDF origin is bottom-left; CSS origin is top-left
         const x = tx * scaleX;
         const y = (viewport.height - ty - itemH) * scaleY;
-        const w = Math.abs(itemW * scaleX);
-        const h = Math.abs(itemH * scaleY) * 1.3;
+        const w = itemW * scaleX;
+        const h = itemH * scaleY * 1.4;
 
-        if (x < 0 || y < 0 || x > dispW || y > dispH) return;
+        // Skip out-of-bounds
+        if (x < -10 || y < -10 || x > dispW + 10 || y > dispH + 10) return;
 
         const box = document.createElement('div');
         box.className = 'hl-box';
-        box.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;`;
+        box.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;`;
         pageDiv.appendChild(box);
+        count++;
       });
+
+      console.log(`Highlighted ${count} matches for "${query}" on page ${pageNum}`);
     } catch(e) { console.warn('Highlight error:', e); }
   }
 
@@ -645,6 +684,58 @@
       document.getElementById('btn-zoom').classList.remove('active');
     }
   });
+
+  // ── VIEW MODE TOGGLE ──
+  let viewMode = 'flipbook'; // 'flipbook' | 'pdf'
+  let pdfViewRendered = false;
+
+  async function toggleViewMode() {
+    if (viewMode === 'flipbook') {
+      // Switch to PDF view
+      viewMode = 'pdf';
+      document.getElementById('flipbook-container').style.display = 'none';
+      document.getElementById('stage').style.display = 'none';
+      const pdfViewEl = document.getElementById('pdf-view');
+      pdfViewEl.classList.add('active');
+      // Render all pages to pdf-view if not done yet
+      if (!pdfViewRendered && pdfDocRef) {
+        pdfViewEl.innerHTML = '<div style="color:#666;font-size:0.82rem;padding:2rem;">Rendering pages…</div>';
+        pdfViewEl.innerHTML = '';
+        for (let i = 1; i <= totalPages; i++) {
+          const c = await renderPageToCanvas(pdfDocRef, i, 1.5);
+          c.style.maxWidth = '900px';
+          c.style.width = '100%';
+          pdfViewEl.appendChild(c);
+        }
+        pdfViewRendered = true;
+      }
+      // Update toggle button
+      document.getElementById('btn-view-toggle').innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+        </svg>
+        Flipbook`;
+      // Disable flipbook-only controls
+      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id => {
+        document.getElementById(id).disabled = true;
+      });
+    } else {
+      // Switch back to flipbook
+      viewMode = 'flipbook';
+      document.getElementById('pdf-view').classList.remove('active');
+      document.getElementById('stage').style.display = '';
+      document.getElementById('flipbook-container').style.display = 'block';
+      document.getElementById('btn-view-toggle').innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+        PDF View`;
+      ['btn-first','btn-prev','btn-next','btn-last','btn-tiles'].forEach(id => {
+        document.getElementById(id).disabled = false;
+      });
+      updateControls();
+    }
+  }
 
   // ── BOOT ──
   async function boot() {
