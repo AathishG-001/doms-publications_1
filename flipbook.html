@@ -199,11 +199,25 @@
 
     /* ════════════════════════════════
        PDF SCROLL VIEW
+       FIX: constrain width to viewport on mobile
     ════════════════════════════════ */
-    .pdf-view { display: none; flex: 1; overflow-y: auto; flex-direction: column; align-items: center; gap: 16px; padding: 1.5rem 1rem; }
+    .pdf-view {
+      display: none; flex: 1; overflow-y: auto; overflow-x: hidden;
+      flex-direction: column; align-items: center; gap: 16px; padding: 1.5rem 1rem;
+    }
     .pdf-view.active { display: flex; }
-    .pdf-page-wrap { position: relative; flex-shrink: 0; }
-    .pdf-page-wrap canvas { display: block; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+    .pdf-page-wrap {
+      position: relative; flex-shrink: 0;
+      /* FIX: ensure page never overflows mobile screen */
+      max-width: 100%;
+    }
+    .pdf-page-wrap canvas {
+      display: block;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      /* FIX: scale canvas down to fit container width on mobile */
+      max-width: 100%;
+      height: auto;
+    }
 
     /* ── PDF.js text layer (for highlight + links) ── */
     .textLayer {
@@ -228,6 +242,8 @@
       border: 1px solid rgba(100,160,255,0.35);
       background: rgba(100,160,255,0.08);
       border-radius: 2px; transition: background 0.1s;
+      /* FIX: allow pointer events through text layer */
+      pointer-events: auto;
     }
     .link-overlay:hover { background: rgba(100,160,255,0.25); }
 
@@ -640,6 +656,23 @@
       if (!pdfViewBuilt && pdfDocRef) {
         pdfViewEl.innerHTML = '';
         pdfPageWraps = [];
+
+        // ── FIX: calculate a scale that fits the PDF page within the visible
+        //    container width on all devices, falling back to PDF_VIEW_SCALE
+        //    on larger screens.
+        const containerW = pdfViewEl.clientWidth || window.innerWidth;
+        // Use padding:1rem each side = 32px total
+        const availableW = containerW - 32;
+
+        // Measure first page at scale=1 to get natural width
+        const firstPage = await pdfDocRef.getPage(1);
+        const vp1 = firstPage.getViewport({ scale: 1 });
+        const naturalW = vp1.width;
+
+        // Scale so rendered canvas fits availableW, but cap at PDF_VIEW_SCALE
+        const fitScale = availableW / naturalW;
+        const renderScale = Math.min(fitScale, PDF_VIEW_SCALE);
+
         for (let i = 1; i <= totalPages; i++) {
           setProgress(Math.round((i/totalPages)*100), `Building PDF view page ${i}…`);
           document.getElementById('loading').classList.remove('hidden');
@@ -648,7 +681,7 @@
           wrap.className = 'pdf-page-wrap';
           wrap.dataset.pageNum = i;
 
-          const { canvas, page, viewport } = await renderToCanvas(pdfDocRef, i, PDF_VIEW_SCALE);
+          const { canvas, page, viewport } = await renderToCanvas(pdfDocRef, i, renderScale);
           wrap.appendChild(canvas);
 
           // Build text layer for highlight + text selection
@@ -686,44 +719,31 @@
   }
 
   // ── BUILD TEXT LAYER (for PDF view) ──
-  // Uses PDF.js text items to create invisible, selectable, highlightable text spans
+  // FIX: use PDF.js renderTextLayer for accurate glyph positioning,
+  // which correctly handles the PDF bottom-left origin and font metrics.
   async function buildTextLayer(page, viewport, container, canvas) {
     const content = await page.getTextContent();
+
     const tl = document.createElement('div');
     tl.className = 'textLayer';
+    // Match the canvas pixel dimensions exactly
     tl.style.cssText = `width:${canvas.width}px;height:${canvas.height}px;`;
-
-    const rx = canvas.width  / viewport.width;
-    const ry = canvas.height / viewport.height;
-
-    content.items.forEach(item => {
-      if (!item.str.trim()) return;
-      const t  = item.transform;
-      const tx = t[4], ty = t[5];
-      const fontSize = Math.abs(t[3]) || Math.abs(t[0]) || 10;
-      const itemW    = Math.abs(item.width) || fontSize * item.str.length * 0.55;
-
-      const cssX = tx * rx;
-      const cssY = (viewport.height - ty) * ry;
-      const cssW = itemW * rx;
-      const cssH = fontSize * ry;
-
-      const span = document.createElement('span');
-      span.textContent = item.str;
-      span.style.cssText = `
-        left:${cssX.toFixed(1)}px;
-        top:${(cssY - cssH).toFixed(1)}px;
-        font-size:${(fontSize * ry).toFixed(1)}px;
-        width:${cssW.toFixed(1)}px;
-      `;
-      tl.appendChild(span);
-    });
-
     container.appendChild(tl);
+
+    // Use PDF.js built-in renderTextLayer for correct positioning
+    await pdfjsLib.renderTextLayer({
+      textContentSource: content,
+      container: tl,
+      viewport: viewport,
+      textDivs: [],
+    }).promise;
+
     return tl;
   }
 
   // ── BUILD LINK OVERLAYS (for PDF view) ──
+  // FIX: PDF.js stores the resolved URL in ann.url directly after getAnnotations().
+  // Internal dest links are handled separately so they navigate within the viewer.
   async function buildLinkOverlays(page, viewport, container, canvasW, canvasH) {
     try {
       const annotations = await page.getAnnotations();
@@ -732,11 +752,17 @@
 
       annotations.forEach(ann => {
         if (ann.subtype !== 'Link') return;
-        const url = ann.url || (ann.action && ann.action.url);
-        if (!url && !ann.dest) return;
 
+        // PDF.js resolves external URLs into ann.url
+        // Internal named destinations are in ann.dest (array) or ann.action
+        const hasUrl  = ann.url && ann.url.trim() !== '';
+        const hasDest = ann.dest != null || (ann.action && ann.action.dest != null);
+        if (!hasUrl && !hasDest) return;
+
+        // PDF coordinate system: origin at bottom-left
         const [x1, y1, x2, y2] = ann.rect;
         const cssX = x1 * rx;
+        // y2 is the top of the rect in PDF coords (larger y = higher on page)
         const cssY = (viewport.height - y2) * ry;
         const cssW = (x2 - x1) * rx;
         const cssH = (y2 - y1) * ry;
@@ -744,18 +770,37 @@
         const a = document.createElement('a');
         a.className = 'link-overlay';
         a.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${cssW.toFixed(1)}px;height:${cssH.toFixed(1)}px;`;
-        if (url) {
-          a.href = url;
+
+        if (hasUrl) {
+          // External hyperlink — open in new tab
+          a.href   = ann.url;
           a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.title = url;
+          a.rel    = 'noopener noreferrer';
+          a.title  = ann.url;
         } else {
+          // Internal destination — resolve page number and navigate
           a.href = '#';
-          a.onclick = e => e.preventDefault();
+          const dest = ann.dest || (ann.action && ann.action.dest);
+          a.addEventListener('click', async e => {
+            e.preventDefault();
+            try {
+              let destArray = dest;
+              // Named destination: resolve to array
+              if (typeof dest === 'string') {
+                destArray = await pdfDocRef.getDestination(dest);
+              }
+              if (destArray && destArray[0]) {
+                const ref       = destArray[0];
+                const pageIndex = await pdfDocRef.getPageIndex(ref);
+                scrollToPdfPage(pageIndex + 1);
+              }
+            } catch(err) { console.warn('Dest nav error:', err); }
+          });
         }
+
         container.appendChild(a);
       });
-    } catch(e) { /* annotations optional */ }
+    } catch(e) { console.warn('Link overlay error:', e); }
   }
 
   // ── PDF VIEW: scroll to page ──
@@ -830,36 +875,58 @@
   }
 
   // ── HIGHLIGHT on flipbook page ──
-  // Uses same coordinate system as buildTextLayer
+  // FIX: use PDF.js getTextContent with the correct scale factor.
+  // The flipbook pages are rendered at RENDER_SCALE, then displayed at dispW/dispH.
+  // We must map from PDF user-space → rendered canvas pixels → displayed pixels.
   async function highlightOnFlipbook(pageNum, query) {
     if (!pdfDocRef || !query) return;
     document.querySelectorAll('#flipbook .hl-box').forEach(el => el.remove());
     try {
       const page    = await pdfDocRef.getPage(pageNum);
       const content = await page.getTextContent();
-      const vp1     = page.getViewport({ scale: 1 });
-      const q       = query.toLowerCase();
+
+      // PDF user space viewport (scale=1)
+      const vp1 = page.getViewport({ scale: 1 });
+
+      const q = query.toLowerCase();
       const pageDiv = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
       if (!pageDiv) return;
 
+      // Ratio: from PDF user-space units → displayed flipbook pixels
+      // Canvas was rendered at RENDER_SCALE, then the img is shown at dispW × dispH
+      // So final pixel = pdfUnit * RENDER_SCALE * (dispW / canvasWidth)
+      //                = pdfUnit * RENDER_SCALE * (dispW / (vp1.width * RENDER_SCALE))
+      //                = pdfUnit * (dispW / vp1.width)
       const rx = dispW / vp1.width;
       const ry = dispH / vp1.height;
 
       let count = 0;
       content.items.forEach(item => {
         if (!item.str.toLowerCase().includes(q) || count >= 20) return;
+
+        // PDF transform matrix: [scaleX, skewY, skewX, scaleY, tx, ty]
+        // tx, ty are the glyph origin in PDF user space (Y axis up from bottom)
         const t        = item.transform;
-        const tx       = t[4], ty = t[5];
-        const fontSize = Math.abs(t[3]) || Math.abs(t[0]) || 10;
-        const itemW    = Math.abs(item.width) || fontSize * item.str.length * 0.55;
+        const tx       = t[4];
+        const ty       = t[5];
+        const fontSize = Math.sqrt(t[0]*t[0] + t[1]*t[1]); // actual rendered font size
+        const itemW    = Math.abs(item.width);
+
+        // Convert PDF bottom-left origin → CSS top-left origin
+        // cssX: x position stays the same
+        // cssY: PDF y is from bottom, CSS y is from top
+        //       top of glyph in PDF = ty + ascent ≈ ty (baseline); subtract from page height
         const cssX = tx * rx;
-        const cssY = (vp1.height - ty) * ry - fontSize * ry;
+        const cssY = (vp1.height - ty - fontSize) * ry;
         const cssW = itemW * rx;
-        const cssH = fontSize * ry * 1.3;
-        if (cssX < -10 || cssY < -10 || cssX > dispW + 10 || cssY > dispH + 10) return;
+        const cssH = fontSize * ry * 1.3;  // slight extra height for descenders
+
+        // Clamp to page bounds to avoid stray boxes
+        if (cssX < -5 || cssY < -5 || cssX > dispW + 5 || cssY > dispH + 5) return;
+
         const box = document.createElement('div');
         box.className = 'hl-box';
-        box.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${cssW.toFixed(1)}px;height:${cssH.toFixed(1)}px;`;
+        box.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${Math.max(cssW,4).toFixed(1)}px;height:${Math.max(cssH,8).toFixed(1)}px;`;
         pageDiv.appendChild(box);
         count++;
       });
@@ -867,13 +934,14 @@
   }
 
   // ── HIGHLIGHT on PDF view page ──
-  // Adds .highlight class to matching text spans in the text layer
+  // FIX: PDF.js renderTextLayer already positions spans correctly.
+  // We just add/remove the .highlight class on matching spans.
   async function highlightOnPdfView(pageNum, query) {
     if (!pdfDocRef || !query || !pdfPageWraps[pageNum]) return;
-    const { wrap, canvas } = pdfPageWraps[pageNum];
+    const { wrap } = pdfPageWraps[pageNum];
 
-    // Clear previous highlights
-    wrap.querySelectorAll('.textLayer span.highlight').forEach(el => el.classList.remove('highlight'));
+    // Clear previous highlights across all pages
+    document.querySelectorAll('.textLayer span.highlight').forEach(el => el.classList.remove('highlight'));
 
     if (!query) return;
     const q = query.toLowerCase();
