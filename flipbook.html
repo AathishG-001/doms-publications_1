@@ -59,7 +59,8 @@
 
     /* Hide some controls on mobile */
     @media (max-width: 600px) {
-      .tb-title, .tb-sep, .tb-page { display: none; }
+      .tb-title, .tb-page { display: none; }
+      .tb-sep:not(.keep) { display: none; }
       .tb-view-toggle span { display: none; }
     }
 
@@ -173,6 +174,15 @@
     @keyframes hl-fade { 0%,80%{opacity:1} 100%{opacity:0} }
 
     :fullscreen .toolbar, :-webkit-full-screen .toolbar { z-index: 100; }
+
+    /* ── LINK OVERLAYS ── */
+    .link-overlay {
+      position: absolute; cursor: pointer; z-index: 6;
+      border: 1px solid rgba(100,160,255,0.3);
+      background: rgba(100,160,255,0.08);
+      border-radius: 2px; transition: background 0.1s;
+    }
+    .link-overlay:hover { background: rgba(100,160,255,0.22); }
   </style>
 </head>
 <body>
@@ -540,6 +550,8 @@
           wrap.appendChild(c);
           pdfViewEl.appendChild(wrap);
           pdfCanvases[i] = wrap;
+          // Add link overlays after canvas is in DOM so offsetWidth is available
+          await addLinkOverlays(pdfDocRef, i, wrap, c.width, c.height);
         }
         pdfViewRendered = true;
       }
@@ -649,6 +661,8 @@
   }
 
   // ── HIGHLIGHT: Flipbook pages ──
+  // Uses PDF.js text item transform to get exact position.
+  // transform = [scaleX, skewY, skewX, scaleY, tx, ty] — PDF origin: bottom-left
   async function drawHighlightsOnFlipbook(pageNum, query) {
     if (!pdfDocRef || !query) return;
     document.querySelectorAll('#flipbook .hl-box').forEach(el => el.remove());
@@ -656,79 +670,126 @@
     try {
       const page     = await pdfDocRef.getPage(pageNum);
       const content  = await page.getTextContent();
-      const viewport = page.getViewport({ scale: RENDER_SCALE });
+      // Use scale 1 viewport for clean coordinate math, then scale to dispW/dispH
+      const vp1      = page.getViewport({ scale: 1 });
       const q        = query.toLowerCase();
 
-      // Find page div by data-page-num (reliable after StPageFlip DOM reorder)
-      const pageDiv = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
-      if (!pageDiv) return;
+      const pageDiv  = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
+      if (!pageDiv) { console.warn('HL: page div not found for', pageNum); return; }
 
-      const scaleX = dispW / viewport.width;
-      const scaleY = dispH / viewport.height;
+      // Map from PDF units (scale=1) to display pixels
+      const rx = dispW / vp1.width;
+      const ry = dispH / vp1.height;
 
       let count = 0;
       content.items.forEach(item => {
-        if (!item.str.toLowerCase().includes(q) || count >= 15) return;
-        const tx    = item.transform[4];
-        const ty    = item.transform[5];
-        const itemH = Math.abs(item.height || 10);
-        const itemW = Math.abs(item.width  || 50);
-        const x = tx * scaleX;
-        const y = (viewport.height - ty - itemH) * scaleY;
-        const w = itemW * scaleX;
-        const h = itemH * scaleY * 1.4;
-        if (x < -5 || y < -5 || x > dispW + 5 || y > dispH + 5) return;
+        if (!item.str.toLowerCase().includes(q) || count >= 20) return;
+
+        const t  = item.transform; // [sx, b, c, sy, tx, ty]
+        const tx = t[4];
+        const ty = t[5];
+        // Font size = absolute value of vertical scale component
+        const fontSize = Math.abs(t[3]) || Math.abs(t[0]) || 10;
+        const itemW    = Math.abs(item.width)  || fontSize * item.str.length * 0.6;
+        const itemH    = fontSize;
+
+        // PDF Y is from bottom; CSS Y is from top
+        const cssX = tx * rx;
+        const cssY = (vp1.height - ty) * ry - itemH * ry;
+        const cssW = itemW * rx;
+        const cssH = itemH * ry * 1.2;
+
+        if (cssX < -10 || cssY < -10 || cssX > dispW + 10 || cssY > dispH + 10) return;
+
         const box = document.createElement('div');
         box.className = 'hl-box';
-        box.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;`;
+        box.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${cssW.toFixed(1)}px;height:${cssH.toFixed(1)}px;`;
         pageDiv.appendChild(box);
         count++;
       });
+      console.log(`Flipbook HL: ${count} hits for "${query}" on page ${pageNum}`);
     } catch(e) { console.warn('Flipbook highlight error:', e); }
   }
 
   // ── HIGHLIGHT: PDF view pages ──
   async function drawHighlightsOnPdfView(pageNum, query) {
     if (!pdfDocRef || !query || !pdfCanvases[pageNum]) return;
-
-    // Remove existing highlights on this page
     pdfCanvases[pageNum].querySelectorAll('.hl-box').forEach(el => el.remove());
 
     try {
-      const page     = await pdfDocRef.getPage(pageNum);
-      const content  = await page.getTextContent();
-      const viewport = page.getViewport({ scale: PDF_VIEW_SCALE });
-      const q        = query.toLowerCase();
+      const page   = await pdfDocRef.getPage(pageNum);
+      const content = await page.getTextContent();
+      const vp1    = page.getViewport({ scale: 1 });
+      const q      = query.toLowerCase();
 
       const wrap   = pdfCanvases[pageNum];
       const canvas = wrap.querySelector('canvas');
       if (!canvas) return;
 
-      // Scale from PDF_VIEW_SCALE viewport → actual canvas display size
-      const displayW = canvas.offsetWidth  || canvas.width  / (window.devicePixelRatio || 1);
-      const displayH = canvas.offsetHeight || canvas.height / (window.devicePixelRatio || 1);
-      const scaleX   = displayW / viewport.width;
-      const scaleY   = displayH / viewport.height;
+      // Use actual rendered canvas pixel size for accurate mapping
+      const displayW = canvas.offsetWidth  || canvas.getBoundingClientRect().width  || canvas.width;
+      const displayH = canvas.offsetHeight || canvas.getBoundingClientRect().height || canvas.height;
+      const rx = displayW / vp1.width;
+      const ry = displayH / vp1.height;
 
       let count = 0;
       content.items.forEach(item => {
-        if (!item.str.toLowerCase().includes(q) || count >= 15) return;
-        const tx    = item.transform[4];
-        const ty    = item.transform[5];
-        const itemH = Math.abs(item.height || 10);
-        const itemW = Math.abs(item.width  || 50);
-        const x = tx * scaleX;
-        const y = (viewport.height - ty - itemH) * scaleY;
-        const w = itemW * scaleX;
-        const h = itemH * scaleY * 1.4;
-        if (x < -5 || y < -5) return;
+        if (!item.str.toLowerCase().includes(q) || count >= 20) return;
+        const t        = item.transform;
+        const tx       = t[4];
+        const ty       = t[5];
+        const fontSize = Math.abs(t[3]) || Math.abs(t[0]) || 10;
+        const itemW    = Math.abs(item.width) || fontSize * item.str.length * 0.6;
+        const itemH    = fontSize;
+        const cssX = tx * rx;
+        const cssY = (vp1.height - ty) * ry - itemH * ry;
+        const cssW = itemW * rx;
+        const cssH = itemH * ry * 1.2;
+        if (cssX < -10 || cssY < -10) return;
         const box = document.createElement('div');
         box.className = 'hl-box';
-        box.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;`;
+        box.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${cssW.toFixed(1)}px;height:${cssH.toFixed(1)}px;`;
         wrap.appendChild(box);
         count++;
       });
     } catch(e) { console.warn('PDF view highlight error:', e); }
+  }
+
+  // ── LINK OVERLAYS: add clickable links on top of page canvases ──
+  async function addLinkOverlays(pdfDoc, pageNum, container, displayW, displayH) {
+    try {
+      const page       = await pdfDoc.getPage(pageNum);
+      const vp1        = page.getViewport({ scale: 1 });
+      const annotations = await page.getAnnotations();
+      const rx = displayW / vp1.width;
+      const ry = displayH / vp1.height;
+
+      annotations.forEach(ann => {
+        if (ann.subtype !== 'Link') return;
+        const url = ann.url || (ann.action && ann.action.url);
+        if (!url && ann.dest == null) return;
+
+        const [x1, y1, x2, y2] = ann.rect;
+        const cssX = x1 * rx;
+        const cssY = (vp1.height - y2) * ry;
+        const cssW = (x2 - x1) * rx;
+        const cssH = (y2 - y1) * ry;
+
+        const overlay = document.createElement('a');
+        overlay.className = 'link-overlay';
+        overlay.style.cssText = `left:${cssX.toFixed(1)}px;top:${cssY.toFixed(1)}px;width:${cssW.toFixed(1)}px;height:${cssH.toFixed(1)}px;`;
+        if (url) {
+          overlay.href = url;
+          overlay.target = '_blank';
+          overlay.rel = 'noopener noreferrer';
+          overlay.title = url;
+        } else {
+          overlay.href = '#';
+          overlay.onclick = e => { e.preventDefault(); };
+        }
+        container.appendChild(overlay);
+      });
+    } catch(e) { /* annotations optional */ }
   }
 
   // ── KEYBOARD ──
