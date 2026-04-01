@@ -202,13 +202,16 @@
       position: absolute;
       color: transparent;
       white-space: pre;
-      transform-origin: 0% 0%;
+      /* transform-origin not needed since we're not using scaleX anymore */
       pointer-events: none;
+      /* display:block so width/height % values take effect */
+      display: block;
     }
-    /* Search highlight — darker amber, clearly visible on white page */
+    /* Search highlight — dark amber, clearly visible on white PDF pages */
     .pdf-text-layer span.hl {
-      background: rgba(175, 100, 0, 0.80);
+      background: rgba(175, 100, 0, 0.82);
       border-radius: 2px;
+      outline: 1.5px solid rgba(130, 65, 0, 0.9);
     }
 
     /* Link overlays — percentage-based so they scale with the wrap */
@@ -535,8 +538,20 @@ function goToPage(n, query) {
   if (viewMode === 'flipbook') {
     document.getElementById('tile-overlay').classList.remove('open');
     document.getElementById('btn-tiles').classList.remove('active');
-    if (pageFlip) pageFlip.flip(n - 1);
-    if (query) setTimeout(() => highlightFlipbook(n, query), 900);
+    if (pageFlip) {
+      if (query) {
+        // Listen for the flip-end event once, then highlight
+        const onFlipDone = () => {
+          pageFlip.off('flip', onFlipDone);
+          // Extra small delay to let PageFlip finish DOM settling
+          setTimeout(() => highlightFlipbook(n, query), 120);
+        };
+        pageFlip.on('flip', onFlipDone);
+      }
+      pageFlip.flip(n - 1);
+      // Fallback: if already on that page the flip event won't fire
+      if (query) setTimeout(() => highlightFlipbook(n, query), 800);
+    }
   } else {
     scrollToPdfPage(n);
     if (query) setTimeout(() => highlightPdfView(n, query), 150);
@@ -656,9 +671,12 @@ async function toggleViewMode() {
 */
 async function buildPageWrap(pdfDoc, pageNum) {
   const { canvas, page, viewport } = await renderPage(pdfDoc, pageNum, RENDER_SCALE);
-  const W = canvas.width;
-  const H = canvas.height;
+  const W = canvas.width;   // canvas pixel width
+  const H = canvas.height;  // canvas pixel height
 
+  // Wrap is sized to canvas px. CSS max-width may shrink it on mobile.
+  // canvas { width:100%; height:auto } fills the wrap proportionally.
+  // ALL overlays use PERCENTAGE positions so they stay aligned after scaling.
   const wrap = document.createElement('div');
   wrap.className = 'pdf-page-wrap';
   wrap.dataset.pageNum = pageNum;
@@ -666,7 +684,7 @@ async function buildPageWrap(pdfDoc, pageNum) {
   wrap.style.height = H + 'px';
   wrap.appendChild(canvas);
 
-  // ── Text layer ──────────────────────────────────────────────
+  // ── Text layer — percentage-positioned ──────────────────────
   const content = await page.getTextContent();
   const tl = document.createElement('div');
   tl.className = 'pdf-text-layer';
@@ -674,33 +692,28 @@ async function buildPageWrap(pdfDoc, pageNum) {
   content.items.forEach(item => {
     if (!item.str || !item.str.trim()) return;
     const [a, b, , , e, f] = item.transform;
-    const fontSize = Math.sqrt(a * a + b * b); // user-space units
+    const fontSize = Math.sqrt(a * a + b * b); // user-space font size
     if (fontSize < 0.5) return;
 
-    // Scale to canvas pixels
-    const cx = e  * RENDER_SCALE;
-    const cy = H - (f * RENDER_SCALE) - (fontSize * RENDER_SCALE);
-    const cw = Math.abs(item.width) * RENDER_SCALE;
-    const ch = fontSize * RENDER_SCALE * 1.2;
+    // Canvas-pixel coords
+    const px = e * RENDER_SCALE;
+    const py = H - (f * RENDER_SCALE) - (fontSize * RENDER_SCALE);
+    const pw = Math.abs(item.width) * RENDER_SCALE;
+    const ph = fontSize * RENDER_SCALE * 1.2;
 
-    // scaleX compresses/stretches text to match actual glyph widths
-    const naturalW = fontSize * RENDER_SCALE * item.str.length;
-    const scaleX   = naturalW > 0 ? (cw / naturalW) : 1;
-
+    // Convert to % of wrap — survives any CSS scaling
     const span = document.createElement('span');
     span.textContent = item.str;
-    span.style.cssText = `left:${cx.toFixed(1)}px;top:${cy.toFixed(1)}px;` +
-      `font-size:${(fontSize * RENDER_SCALE).toFixed(1)}px;` +
-      `width:${(cw || ch).toFixed(1)}px;` +
-      `transform:scaleX(${scaleX.toFixed(4)});`;
+    span.style.left     = ((px / W) * 100).toFixed(4) + '%';
+    span.style.top      = ((py / H) * 100).toFixed(4) + '%';
+    span.style.width    = (((pw || ph) / W) * 100).toFixed(4) + '%';
+    span.style.height   = ((ph / H) * 100).toFixed(4) + '%';
+    span.style.fontSize = ((fontSize * RENDER_SCALE / H) * 100).toFixed(4) + '%';
     tl.appendChild(span);
   });
   wrap.appendChild(tl);
 
-  // ── Link overlays ────────────────────────────────────────────
-  // viewport.convertToViewportRectangle maps [x1,y1,x2,y2] from PDF user-space
-  // to the canvas coordinate system (pixels, Y flipped). Express as % of wrap
-  // so the overlay stays aligned when CSS scales the wrap for mobile.
+  // ── Link overlays — percentage-positioned, DOM after tl = on top ──
   try {
     const anns = await page.getAnnotations();
     anns.forEach(ann => {
@@ -710,21 +723,21 @@ async function buildPageWrap(pdfDoc, pageNum) {
       const hasAct  = ann.action != null;
       if (!hasUrl && !hasDest && !hasAct) return;
 
-      // Convert annotation rect to canvas pixels
+      // convertToViewportRectangle: PDF user-space → canvas px (Y already flipped)
       const vr = viewport.convertToViewportRectangle(ann.rect);
       const x1 = Math.min(vr[0], vr[2]), y1 = Math.min(vr[1], vr[3]);
       const x2 = Math.max(vr[0], vr[2]), y2 = Math.max(vr[1], vr[3]);
 
       const a = document.createElement('a');
       a.className = 'pdf-link';
-      // Use % so the overlay scales with the CSS-scaled wrap
       a.style.left   = ((x1 / W) * 100).toFixed(3) + '%';
       a.style.top    = ((y1 / H) * 100).toFixed(3) + '%';
       a.style.width  = (((x2 - x1) / W) * 100).toFixed(3) + '%';
       a.style.height = (((y2 - y1) / H) * 100).toFixed(3) + '%';
 
       if (hasUrl) {
-        a.href = ann.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = ann.url;
+        a.href = ann.url; a.target = '_blank';
+        a.rel = 'noopener noreferrer'; a.title = ann.url;
       } else {
         a.href = '#';
         const dest = ann.dest || (ann.action && ann.action.dest);
@@ -732,12 +745,14 @@ async function buildPageWrap(pdfDoc, pageNum) {
           ev.preventDefault();
           if (!dest) return;
           try {
-            const arr = typeof dest === 'string' ? await pdfDocRef.getDestination(dest) : dest;
-            if (arr && arr[0]) scrollToPdfPage((await pdfDocRef.getPageIndex(arr[0])) + 1);
+            const arr = typeof dest === 'string'
+              ? await pdfDocRef.getDestination(dest) : dest;
+            if (arr && arr[0])
+              scrollToPdfPage((await pdfDocRef.getPageIndex(arr[0])) + 1);
           } catch(err) { console.warn('Internal link:', err); }
         });
       }
-      wrap.appendChild(a);  // after tl — sits on top in DOM stacking
+      wrap.appendChild(a); // after tl — above spans in z-order
     });
   } catch(e) { /* annotations optional */ }
 
@@ -811,32 +826,38 @@ async function doSearch() {
 
 // ── Highlight: flipbook ─────────────────────────────────────────
 /*
-  Flipbook images are rendered at RENDER_SCALE then CSS-shrunk to dispW×dispH.
-  To overlay a highlight box we need coordinates in display pixels.
+  PageFlip renders pages as images inside .page divs. The divs stay in the
+  DOM but PageFlip moves them and re-stacks them during animation.
+  We draw .hl-box divs on top of the image, using display-pixel coords.
 
-  PDF text item transform [a,b,c,d,e,f] gives:
-    e, f = glyph origin (baseline) in PDF user-space, Y from bottom
-    fontSize (user-space) = sqrt(a²+b²)
+  PDF transform [a,b,c,d,e,f]:
+    e = x baseline (PDF user-space, origin bottom-left)
+    f = y baseline (PDF user-space, origin bottom-left)
+    fontSize = sqrt(a²+b²) in user-space units
 
-  Steps:
-    1. Get user-space viewport (scale=1): vp1.width, vp1.height
-    2. Compute display-pixel ratios:
-         rx = dispW / vp1.width
-         ry = dispH / vp1.height
-    3. left = e * rx
-       top  = (vp1.height - f - fontSize) * ry   ← Y-flip + shift up by font height
+  Map to display pixels:
+    rx = dispW / pageUserWidth
+    ry = dispH / pageUserHeight
+    left = e * rx
+    top  = (pageUserHeight - f - fontSize) * ry
 */
 async function highlightFlipbook(pageNum, query) {
   if (!pdfDocRef || !query) return;
+  // Remove any old boxes
   document.querySelectorAll('#flipbook .hl-box').forEach(el => el.remove());
   try {
     const page    = await pdfDocRef.getPage(pageNum);
     const content = await page.getTextContent();
     const vp1     = page.getViewport({ scale: 1 });
     const q       = query.toLowerCase();
-    const pageDiv = document.querySelector(`#flipbook .page[data-page-num="${pageNum}"]`);
+
+    // Find the page div — PageFlip keeps the original div but may also clone it.
+    // Query by data-page-num; if multiple exist take the first visible one.
+    const allDivs = [...document.querySelectorAll(`#flipbook .page[data-page-num="${pageNum}"]`)];
+    const pageDiv = allDivs.find(d => d.offsetParent !== null) || allDivs[0];
     if (!pageDiv) return;
 
+    // Scale from PDF user-space → displayed flipbook pixels
     const rx = dispW / vp1.width;
     const ry = dispH / vp1.height;
     let count = 0;
@@ -844,15 +865,14 @@ async function highlightFlipbook(pageNum, query) {
     content.items.forEach(item => {
       if (count >= 20 || !item.str.toLowerCase().includes(q)) return;
       const [a, b, , , e, f] = item.transform;
-      const fontSize = Math.sqrt(a * a + b * b);   // user-space units
+      const fontSize = Math.sqrt(a * a + b * b);
       if (fontSize < 0.5) return;
 
       const left   = e * rx;
       const top    = (vp1.height - f - fontSize) * ry;
-      const width  = Math.abs(item.width) * rx || fontSize * rx * item.str.length * 0.6;
-      const height = fontSize * ry * 1.2;
+      const width  = (Math.abs(item.width) || fontSize * item.str.length * 0.55) * rx;
+      const height = fontSize * ry * 1.25;
 
-      // Skip if outside page bounds
       if (left + width < 0 || top + height < 0 || left > dispW || top > dispH) return;
 
       const box = document.createElement('div');
@@ -869,8 +889,8 @@ async function highlightFlipbook(pageNum, query) {
 
 // ── Highlight: PDF view ─────────────────────────────────────────
 /*
-  Text spans in the PDF view are positioned at canvas-pixel coordinates
-  matching the PDF text item positions. To highlight we just add class .hl.
+  Spans are % positioned. Adding class .hl makes them show as amber blocks.
+  The highlight is sized to cover the span's % area, which scales with wrap.
 */
 function highlightPdfView(pageNum, query) {
   if (!query || !pdfPageWraps[pageNum]) return;
