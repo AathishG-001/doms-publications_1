@@ -736,27 +736,26 @@ function goNext()  { if (viewMode==='flipbook' && pageFlip) pageFlip.flipNext();
 function pdfNavPrev() { if (currentPage > 1) scrollToPdfPage(currentPage - 1); }
 function pdfNavNext() { if (currentPage < totalPages) scrollToPdfPage(currentPage + 1); }
 
-function goToPage(n, query) {
+async function goToPage(n, match) {
   if (viewMode === 'flipbook') {
-    document.getElementById('tile-overlay').classList.remove('open');
-    document.getElementById('btn-tiles').classList.remove('active');
     if (!pageFlip) return;
-    if (query) {
-      // One-shot flip listener; also set a fallback timeout
-      let done = false;
-      const onFlip = () => {
-        if (done) return; done = true;
-        pageFlip.off('flip', onFlip);
-        setTimeout(() => highlightFlipbook(n, query), 120);
-      };
-      pageFlip.on('flip', onFlip);
-      setTimeout(() => { if (!done) { done = true; pageFlip.off('flip', onFlip); highlightFlipbook(n, query); } }, 900);
-    }
+
+    await ensureFlipbookPages(n);
+
     pageFlip.flip(n - 1);
+
+    pageFlip.once('flip', () => {
+      if (match) highlightFlipbook(n, match);
+    });
+
   } else {
     scrollToPdfPage(n);
-    if (query) setTimeout(() => highlightPdfView(n, query), 200);
+
+    if (match) {
+      setTimeout(() => highlightPdfView(n, match), 200);
+    }
   }
+
   saveState();
 }
 
@@ -1069,101 +1068,86 @@ function toggleSearch() {
 }
 
 async function doSearch() {
-  const query = document.getElementById('search-input').value.trim();
+  const query = document.getElementById('search-input').value.trim().toLowerCase();
   if (!query) return;
-  const statusEl  = document.getElementById('search-status');
+
+  const statusEl = document.getElementById('search-status');
   const resultsEl = document.getElementById('search-results');
-  resultsEl.innerHTML = ''; statusEl.textContent = 'Searching…';
 
-  // Direct page-number jump
-  const pageNum = parseInt(query, 10);
-  if (!isNaN(pageNum) && String(pageNum) === query && pageNum >= 1 && pageNum <= totalPages) {
-    statusEl.textContent = `Jumping to page ${pageNum}`; goToPage(pageNum); return;
-  }
-  if (!pdfDocRef) { statusEl.textContent = 'PDF not ready.'; return; }
+  resultsEl.innerHTML = '';
+  statusEl.textContent = 'Searching…';
 
-  const q = query.toLowerCase();
   const matches = [];
 
-  if (searchIndexBuilt) {
-    // O(n) scan of pre-built index — instant, no PDF fetching
-    for (let i = 1; i <= totalPages; i++) {
-      const si = searchIndex[i];
-      if (!si) continue;
-      const idx = si.text.indexOf(q);
-      if (idx !== -1) {
-        const snippet = si.text.substring(Math.max(0, idx - 40), idx + 80);
-        matches.push({ page: i, snippet });
-      }
-    }
-  } else {
-    // Index not ready yet — scan on demand and show building notice
-    statusEl.textContent = 'Building index… (first search only)';
-    for (let i = 1; i <= totalPages; i++) {
-      try {
-        const page = await pdfDocRef.getPage(i);
-        const content = await page.getTextContent();
-        const text = content.items.map(it => it.str).join(' ').toLowerCase();
-        const idx = text.indexOf(q);
-        if (idx !== -1) {
-          matches.push({ page: i, snippet: text.substring(Math.max(0, idx - 40), idx + 80) });
-        }
-      } catch(e) {}
-      if (i % 5 === 0) await new Promise(r => setTimeout(r, 0)); // don't block
-    }
+  if (!searchIndexBuilt) {
+    statusEl.textContent = 'Index not ready yet…';
+    return;
   }
 
-  if (!matches.length) { statusEl.textContent = `No results for "${query}"`; return; }
-  statusEl.textContent = `${matches.length} page${matches.length > 1 ? 's' : ''} found`;
+  for (let i = 1; i <= totalPages; i++) {
+    const si = searchIndex[i];
+    if (!si) continue;
 
-  const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    si.items.forEach(item => {
+      if (item.str.includes(query)) {
+        matches.push({
+          page: i,
+          item: item
+        });
+      }
+    });
+  }
+
+  if (!matches.length) {
+    statusEl.textContent = `No results for "${query}"`;
+    return;
+  }
+
+  statusEl.textContent = `${matches.length} results found`;
+
   matches.forEach(m => {
-    const item = document.createElement('div');
-    item.className = 'sr-item';
-    item.onclick = () => {
-      document.querySelectorAll('.sr-item').forEach(el => el.classList.remove('active-result'));
-      item.classList.add('active-result'); goToPage(m.page, query);
+    const el = document.createElement('div');
+    el.className = 'sr-item';
+
+    el.onclick = () => {
+      document.querySelectorAll('.sr-item').forEach(e => e.classList.remove('active-result'));
+      el.classList.add('active-result');
+      goToPage(m.page, m.item);
     };
-    item.innerHTML = `
-      <img class="sr-thumb" src="${thumbUrls[m.page-1]||''}" alt="Page ${m.page}"/>
+
+    el.innerHTML = `
+      <img class="sr-thumb" src="${thumbUrls[m.page - 1]}" />
       <div class="sr-info">
         <div class="sr-page">Page ${m.page}</div>
-        <div class="sr-match">…${m.snippet.replace(re, s => `<mark>${s}</mark>`)}…</div>
-      </div>`;
-    resultsEl.appendChild(item);
+        <div class="sr-match">${m.item.str}</div>
+      </div>
+    `;
+
+    resultsEl.appendChild(el);
   });
 }
-
 // ─────────────────────────────────────────────
 // HIGHLIGHT — FLIPBOOK
 // ─────────────────────────────────────────────
-async function highlightFlipbook(pageNum, query) {
-  if (!pdfDocRef || !query) return;
+function highlightFlipbook(pageNum, match) {
   document.querySelectorAll('#flipbook .hl-box').forEach(el => el.remove());
-  try {
-    // Use searchIndex items if available (already computed), else fetch
-    let items;
-    if (searchIndex[pageNum]) {
-      items = searchIndex[pageNum].items;
-    } else {
-      const page    = await pdfDocRef.getPage(pageNum);
-      const content = await page.getTextContent();
-      items = [];
-      content.items.forEach(item => {
-        if (!item.str || !item.str.trim()) return;
-        const [a, b, , , e, f] = item.transform;
-        const fs = Math.sqrt(a * a + b * b);
-        if (fs < 0.5) return;
-        items.push({
-          str: item.str.toLowerCase(),
-          // Store in user-space % so we can scale to any dispW/H
-          left: (e / pageUserW * 100).toFixed(3),
-          top:  ((pageUserH - f - fs * 1.15) / pageUserH * 100).toFixed(3),
-          w:    ((Math.abs(item.width) || fs * item.str.length * 0.55) / pageUserW * 100).toFixed(3),
-          h:    (fs * 1.35 / pageUserH * 100).toFixed(3),
-        });
-      });
-    }
+
+  const page = document.querySelector(
+    `#flipbook .page[data-page-num="${pageNum}"]`
+  );
+
+  if (!page) return;
+
+  const box = document.createElement('div');
+  box.className = 'hl-box';
+
+  box.style.left = match.left + "%";
+  box.style.top = match.top + "%";
+  box.style.width = match.w + "%";
+  box.style.height = match.h + "%";
+
+  page.appendChild(box);
+}
 
     const q = query.toLowerCase();
     const allDivs = [...document.querySelectorAll(`#flipbook .page[data-page-num="${pageNum}"]`)];
@@ -1189,27 +1173,21 @@ async function highlightFlipbook(pageNum, query) {
 // ─────────────────────────────────────────────
 // HIGHLIGHT — PDF VIEW
 // ─────────────────────────────────────────────
-function highlightPdfView(pageNum, query) {
-  if (!query || !pdfPageWraps[pageNum]) return;
-  document.querySelectorAll('.hl-mark').forEach(el => el.remove());
+function highlightPdfView(pageNum, match) {
   const pw = pdfPageWraps[pageNum];
-  if (!pw.items) return; // page not rendered yet
-  const q = query.toLowerCase();
-  let count = 0, first = null;
-  pw.items.forEach(item => {
-    if (count >= 30 || !item.str.includes(q)) return;
-    const mark = document.createElement('div');
-    mark.className = 'hl-mark';
-    mark.style.left   = item.left + '%';
-    mark.style.top    = item.top  + '%';
-    mark.style.width  = item.w    + '%';
-    mark.style.height = item.h    + '%';
-    pw.el.appendChild(mark);
-    if (!first) first = mark;
-    count++;
-  });
-  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(() => document.querySelectorAll('.hl-mark').forEach(el => el.remove()), 6000);
+  if (!pw || !pw.el) return;
+
+  pw.el.querySelectorAll('.hl-mark').forEach(el => el.remove());
+
+  const div = document.createElement('div');
+  div.className = 'hl-mark';
+
+  div.style.left = match.left + "%";
+  div.style.top = match.top + "%";
+  div.style.width = match.w + "%";
+  div.style.height = match.h + "%";
+
+  pw.el.appendChild(div);
 }
 
 // ─────────────────────────────────────────────
